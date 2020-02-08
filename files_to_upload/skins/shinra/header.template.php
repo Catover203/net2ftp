@@ -3,17 +3,15 @@
 
 	<!-- WRAPPER -->
 	<div id="wrapper">
-			
+
 		<!-- HEADER -->
 		<div id="header">
-
-<?php require_once($net2ftp_globals["application_skinsdir"] . "/" . $net2ftp_globals["skin"] . "/google_ad_top.template.php"); ?>
-
 			<img id="logo" src="skins/shinra/img/logo.png" alt="net2ftp" />
+<?php require_once($net2ftp_globals["application_skinsdir"] . "/ads/ad_browse_header.template.php"); ?>
 
 		</div>
 		<!-- ENDS HEADER -->
-			
+
 		<!-- MAIN -->
 		<div id="main">
 

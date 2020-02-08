@@ -49,7 +49,7 @@
 				<div id="header_shown" style="display: none;"><textarea name="text_splitted[top]" style="width: 100%; height: 200px;"><?php echo $text_splitted["top"]; ?></textarea></div>
 
 				<div id="body_hidden"></div>
-				<div id="body_shown" style="display: block;"><textarea cols="120" rows="35" id="text_splitted[middle]" name="text_splitted[middle]"><?php echo $text_splitted["middle"]; ?></textarea></div>
+				<div id="body_shown" style="display: block;"><textarea cols="120" rows="35" id="text_splitted_middle" name="text_splitted[middle]"><?php echo $text_splitted["middle"]; ?></textarea></div>
 
 				<div id="footer_hidden"></div>
 				<div id="footer_shown" style="display: none;"><textarea name="text_splitted[bottom]" style="width: 100%; height: 200px;"><?php echo $text_splitted["bottom"]; ?></textarea></div>

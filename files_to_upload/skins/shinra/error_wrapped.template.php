@@ -6,21 +6,35 @@
 <meta name="keywords" content="net2ftp, web, ftp, based, web-based, xftp, client, PHP, SSL, SSH, SSH2, password, server, free, gnu, gpl, gnu/gpl, net, net to ftp, netftp, connect, user, gui, interface, web2ftp, edit, editor, online, code, php, upload, download, copy, move, delete, zip, tar, unzip, untar, recursive, rename, chmod, syntax, highlighting, host, hosting, ISP, webserver, plan, bandwidth" />
 <meta name="description" content="net2ftp is a web based FTP client. It is mainly aimed at managing websites using a browser. Edit code, upload/download files, copy/move/delete directories recursively, rename files and directories -- without installing any software." />
 <link rel="shortcut icon" href="favicon.ico" />
+<link rel="apple-touch-icon" href="favicon.png"/>
 <title>net2ftp - a web based FTP client</title>
-<?php echo "<link rel=\"stylesheet\" type=\"text/css\" href=\"". $net2ftp_globals["application_rootdir_url"] . "/skins/" . $net2ftp_globals["skin"] . "/css/main.css.php?ltr=" . __("ltr") . "&amp;image_url=" . urlEncode2($net2ftp_globals["image_url"]) . "\" />\n"; ?>
+<?php if ($net2ftp_globals["language"] == "he" || $net2ftp_globals["language"] == "ar") { $stylesheet = "style.rtl.css"; }
+	else { $stylesheet = "style.ltr.css"; }
+	echo "<link rel=\"stylesheet\" type=\"text/css\" href=\"" . $net2ftp_globals["application_rootdir_url"] . "/skins/shinra/css/" . $stylesheet . "\" media=\"screen\" />\n"; ?>
+<?php echo "<link rel=\"stylesheet\" type=\"text/css\" href=\"" . $net2ftp_globals["application_rootdir_url"] . "/skins/shinra/skins/glossy/style.css\" media=\"screen\" />\n"; ?>
+<?php echo "<link rel=\"stylesheet\" type=\"text/css\" href=\"" . $net2ftp_globals["application_rootdir_url"] . "/skins/shinra/js/poshytip-1.0/src/tip-twitter/tip-twitter.css\" />\n"; ?>
+<?php echo "<link rel=\"stylesheet\" type=\"text/css\" href=\"" . $net2ftp_globals["application_rootdir_url"] . "/skins/shinra/js/poshytip-1.0/src/tip-yellowsimple/tip-yellowsimple.css\" />\n"; ?>
 </head>
 <body>
-<div id="container">
-	<div id="p_ba7428_progress" class="p_ba7428" style="margin-left:auto; margin-right:auto; width:500px; padding-bottom:5px;">
-	</div>
-	<div id="head">
-		<div id="headleft">
-			<a href="http://www.net2ftp.com" target="_blank"><img src="skins/blue/images/img/logo.png" alt="net2ftp" style="width: 193px; height: 59px; border: 0;" /></a>
+
+	<!-- WRAPPER -->
+	<div id="wrapper">
+
+		<!-- HEADER -->
+		<div id="header">
+			<img id="logo" src="skins/shinra/img/logo.png" alt="net2ftp" />
 		</div>
-		<div style="float: right; text-align: right;">
-		</div>
- 	</div>
-	<div id="main">
+		<!-- ENDS HEADER -->
+			
+		<!-- MAIN -->
+		<div id="main">
+
+			<!-- content -->
+			<div id="content">
+				
+				<!-- title -->
+				<div id="page-title"><span class="title"><?php echo $net2ftp_globals["ftpserver"]; ?></span></div>
+
 <?php
 if ($net2ftp_result["success"] == false) {
 	require_once($net2ftp_globals["application_rootdir"] . "/skins/" . $net2ftp_globals["skin"] . "/error.template.php");

@@ -2,7 +2,7 @@
 
 //   -------------------------------------------------------------------------------
 //  |                  net2ftp: a web based FTP client                              |
-//  |              Copyright (c) 2003-2013 by David Gartner                         |
+//  |              Copyright (c) 2003-2017 by David Gartner                         |
 //  |                                                                               |
 //   -------------------------------------------------------------------------------
 //  |                                                                               |
@@ -27,36 +27,44 @@ $net2ftp_settings["email_feedback"] = "webmaster@enter-your-domain-here.com";
 $net2ftp_settings["default_language"] = "en";
 $net2ftp_settings["default_skin"]     = "shinra";
 
-// Enter the address of your help pages, support forum or ticket system
-// This will add a link in the footer; leave empty if you don't have this
-$net2ftp_settings["help_text"] = "";
-$net2ftp_settings["help_link"] = "";
-
 // PHP error reporting
 //$net2ftp_settings["error_reporting"] = "NONE";
 $net2ftp_settings["error_reporting"] = "standard";
 //$net2ftp_settings["error_reporting"] = "ALL";
 
-// Fix transparent PNG images in IE
-$net2ftp_settings["fix_png"] = "yes";
-
 // MD5 salt and encryption string (change them to improve security)
 $net2ftp_settings["encryption_string"] = "462E16CB7C3F369BD9F4DBEE0A926F8F14FFB3";
 
-
+             
 // ----------------------------------------------------------------------------------
-// Admin Panel username and password
-// If no password is set, the Admin panel will not be accessible by anyone
-// ----------------------------------------------------------------------------------
-
-$net2ftp_settings["admin_username"] = "admin";
-$net2ftp_settings["admin_password"] = "";
-
-
-// ----------------------------------------------------------------------------------
-// Message on Browse screen
+// Login screen
 // ----------------------------------------------------------------------------------
 
+// Show a Google captcha on the login screens (to prevent robots from using net2ftp)
+// Go to https://www.google.com/recaptcha/intro/ to create an account
+$net2ftp_settings["use_captcha"] = "no"; // "yes" or "no"
+$net2ftp_settings["recaptcha_sitekey"]   = "";
+$net2ftp_settings["recaptcha_secretkey"] = "";
+
+// Show privacy policies to which the user must agree before logging in
+// Leave empty if you don't want to show anything
+$net2ftp_settings["privacy_policy_1"] = "I agree to the <a href=\"enter-your-cookie-policy-here.html\">Cookie Policy</a>"; 
+$net2ftp_settings["privacy_policy_2"] = "";
+$net2ftp_settings["privacy_policy_3"] = "";
+$net2ftp_settings["privacy_policy_4"] = "";
+$net2ftp_settings["privacy_policy_5"] = "";
+$net2ftp_settings["privacy_policy_6"] = "";
+$net2ftp_settings["privacy_policy_7"] = "";
+$net2ftp_settings["privacy_policy_8"] = "";
+$net2ftp_settings["privacy_policy_9"] = "";
+$net2ftp_settings["privacy_policy_10"] = "";
+
+
+// ----------------------------------------------------------------------------------
+// Browse screen
+// ----------------------------------------------------------------------------------
+
+// Show a message on top of the list of directories and files
 $net2ftp_settings["message_browse"] = "";
 
 
@@ -80,7 +88,7 @@ $net2ftp_settings["log_access"] = "yes";
 $net2ftp_settings["log_error"]  = "yes";
 
 // Delete logs which are older than X months automatically
-$net2ftp_settings["log_length_months"] = 12; // number of months
+$net2ftp_settings["log_length_months"] = 2; // number of months
 
 
 // ----------------------------------------------------------------------------------
@@ -98,7 +106,7 @@ $net2ftp_settings["syslog_ident"] = "net2ftp";
 // upload, download, copy, move, search, view, edit
 // ----------------------------------------------------------------------------------
 
-$net2ftp_settings["max_filesize"]  = "10000000";  // in Bytes, default 10 MB
+$net2ftp_settings["max_filesize"]  = "20000000";  // in Bytes, default 10 MB
 
 // Note: IF YOU WANT TO ALLOW LARGE FILE UPLOADS, YOU MAY HAVE TO ADJUST
 //       THE FOLLOWING PARAMETERS:
@@ -111,33 +119,34 @@ $net2ftp_settings["max_filesize"]  = "10000000";  // in Bytes, default 10 MB
 // Server resource consumption settings
 // ----------------------------------------------------------------------------------
 
-// Switch consumption checking on or off
+// Switch consumption checking on or off (requires a database, see above)
 $net2ftp_settings["check_consumption"] = "no";
 
 // Maximum data transfer volume per day (in Bytes)
-$net2ftp_settings["max_consumption_ipaddress_datatransfer"] = 50000000; // per IP address
-$net2ftp_settings["max_consumption_ftpserver_datatransfer"] = 50000000; // per FTP server
+$net2ftp_settings["max_consumption_ipaddress_datatransfer"] = 250000000; // per IP address
+$net2ftp_settings["max_consumption_ftpserver_datatransfer"] = 250000000; // per FTP server
 
 // Maximum script execution time per day (in seconds)
-$net2ftp_settings["max_consumption_ipaddress_executiontime"] = 1500; // per IP address
-$net2ftp_settings["max_consumption_ftpserver_executiontime"] = 1500; // per FTP server
-
-// Check the user's home directory?
-$net2ftp_settings["check_homedirectory"] = "no";
+$net2ftp_settings["max_consumption_ipaddress_executiontime"] = 100000; // per IP address
+$net2ftp_settings["max_consumption_ftpserver_executiontime"] = 100000; // per FTP server
 
 
 // ----------------------------------------------------------------------------------
 // DO NOT CHANGE ANYTHING BELOW THIS LINE
 // ----------------------------------------------------------------------------------
 
-$net2ftp_settings["application_version"] = "1.0";
-$net2ftp_settings["application_build_nr"] = "47";
+$net2ftp_settings["application_version"] = "1.3";
+$net2ftp_settings["application_build_nr"] = "51";
 
 // Is this net2ftp.com, or a net2ftp installation elsewhere
 $net2ftp_settings["net2ftpdotcom"] = "no";
 
-// Show advertisements 
-// Not shown when using HTTPS to avoid warnings on each pageload
-$net2ftp_settings["show_ads"] = "no";
+// Show advertisements
+$net2ftp_settings["show_ads"]         = "no";
+$net2ftp_settings["ad_login_corner"]  = "no";
+$net2ftp_settings["ad_login_bottom"]  = "no";
+$net2ftp_settings["ad_browse_list"]   = "no";
+$net2ftp_settings["ad_browse_header"] = "no";
+$net2ftp_settings["ad_logout"]        = "no";
 
 ?>

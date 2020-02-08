@@ -2,7 +2,7 @@
 
 //   -------------------------------------------------------------------------------
 //  |                  net2ftp: a web based FTP client                              |
-//  |              Copyright (c) 2003-2013 by David Gartner                         |
+//  |              Copyright (c) 2003-2017 by David Gartner                         |
 //  |                                                                               |
 //  | This program is free software; you can redistribute it and/or                 |
 //  | modify it under the terms of the GNU General Public License                   |
@@ -50,14 +50,101 @@ function net2ftp_module_printJavascript() {
 // This function prints Javascript code and includes
 // --------------
 
-//	global $net2ftp_settings, $net2ftp_globals, $net2ftp_messages, $net2ftp_result;
+	global $net2ftp_settings, $net2ftp_globals;
 
+// -------------------------------------------------------------------------
+// Include the embed.js file for openlaszlo, and nothing else
+// -------------------------------------------------------------------------
+	if ($net2ftp_globals["skin"] == "openlaszlo") {
+//		echo "<script type=\"text/javascript\" src=\"". $net2ftp_globals["application_rootdir_url"] . "/skins/openlaszlo/lps/includes/embed-compressed.js\"></script>\n";
+	}
+
+// -------------------------------------------------------------------------
+// For the other skins, do print more Javascript functions
+// -------------------------------------------------------------------------
+	else {
+
+// ------------------------------------
+// Includes
+// ------------------------------------
+
+// Recaptcha (special code to allow 3 on the same page)
+// http://mycodde.blogspot.ch/2014/12/multiple-recaptcha-demo-same-page.html
+		if ($net2ftp_settings["use_captcha"] == "yes") {
+			echo "<script src=\"https://www.google.com/recaptcha/api.js?onload=myCallBack&render=explicit\" async defer></script>\n";
+		}
+
+// Detect adblocker
+		if ($net2ftp_settings["show_ads"] == "yes") {
+			echo "<script type=\"text/javascript\" src=\"". $net2ftp_globals["application_rootdir_url"] . "/skins/ads/adblocker_detect.js\"></script>\n";
+		}
+
+// ------------------------------------
 // Code
-//	echo "<script type=\"text/javascript\"><!--\n";	
-//	echo "//--></script>\n";
+// ------------------------------------
 
-// Include
-//	echo "<script type=\"text/javascript\" src=\"". $net2ftp_globals["application_rootdir_url"] . "/modules/login/login.js\"></script>\n";
+		echo "<script type=\"text/javascript\"><!--\n";	
+
+// Recaptcha (special code to allow 3 on the same page)
+// http://mycodde.blogspot.ch/2014/12/multiple-recaptcha-demo-same-page.html
+		if ($net2ftp_settings["use_captcha"] == "yes") {
+			echo "var recaptcha1, recaptcha2, recaptcha3;\n";
+			echo "var myCallBack = function() {\n";
+			echo "	recaptcha1 = grecaptcha.render('recaptcha1', {\n";
+			echo "		'sitekey' : '" . $net2ftp_settings["recaptcha_sitekey"] . "',\n";
+			echo "		'theme' : 'light'\n";
+			echo "	});\n";
+			echo "};\n";
+		}
+
+		echo "function CheckInput(form) {\n";
+		echo "	if (form.username.value.length == 0) {\n";
+		echo "		form.username.focus();\n";
+		echo "		alert(\"" . __("Please enter a username.") . "\");\n";
+		echo "		return false;\n";
+		echo "	}\n";
+		echo "	if (form.username.value.length > 254) {\n";
+		echo "		form.username.focus();\n";
+		echo "		alert(\"" . __("Username is too long; please enter less than 255 characters.") . "\");\n";
+		echo "		return false;\n";
+		echo "	}\n";
+
+//		echo "	if (form.password.value.length == 0) {\n";
+//		echo "		form.password.focus();\n";
+//		echo "		alert(\"" . __("Please enter a password.") . "\");\n";
+//		echo "		return false;\n";
+//		echo "	}\n";
+
+		echo "	if (form.user_email.value.length == 0) {\n";
+		echo "		form.user_email.focus();\n";
+		echo "		alert(\"" . __("Please enter your email address.") . "\");\n";
+		echo "		return false;\n";
+		echo "	}\n";
+		echo "	if (form.user_email.value.length > 254) {\n";
+		echo "		form.user_email.focus();\n";
+		echo "		alert(\"" . __("Email is too long; please enter less than 255 characters.") . "\");\n";
+		echo "		return false;\n";
+		echo "	}\n";
+
+		$privacy_check = "";
+		for ($i=1; $i<=10; $i++) {
+			if (isset($net2ftp_settings["privacy_policy_" . $i]) && $net2ftp_settings["privacy_policy_" . $i] != "") { 
+				$privacy_check .= " || form.privacy" . $i . ".checked == false"; 
+			} // end if
+		} // end for
+		$privacy_check = substr($privacy_check, 4, strlen($privacy_check)-4);
+
+		echo "	if (" . $privacy_check . ") {\n";
+		echo "		alert(\"" . __("Please agree to all privacy policies.") . "\");\n";
+		echo "		return false;\n";
+		echo "	}\n";
+
+		echo "	return true;\n";
+		echo "}\n";
+
+		echo "//--></script>\n";
+
+	} // end if else
 
 } // end net2ftp_printJavascript
 
@@ -84,7 +171,7 @@ function net2ftp_module_printCss() {
 	global $net2ftp_settings, $net2ftp_globals;
 
 // Include
-	echo "<link rel=\"stylesheet\" type=\"text/css\" href=\"". $net2ftp_globals["application_rootdir_url"] . "/skins/" . $net2ftp_globals["skin"] . "/css/main.css.php?ltr=" . __("ltr") . "&amp;image_url=" . urlEncode2($net2ftp_globals["image_url"]) . "\" />\n";
+//	echo "<link rel=\"stylesheet\" type=\"text/css\" href=\"". $net2ftp_globals["application_rootdir_url"] . "/skins/" . $net2ftp_globals["skin"] . "/css/main.css.php?ltr=" . __("ltr") . "&amp;image_url=" . urlEncode2($net2ftp_globals["image_url"]) . "\" />\n";
 
 } // end net2ftp_printCssInclude
 
@@ -156,16 +243,18 @@ function net2ftp_module_printBody() {
 	else                               { $text = ""; }
 
 // Copy, move, delete
-	if (isset($_POST["ftpserver2"]) == true)     { $net2ftp_globals["ftpserver2"]     = validateFtpserver($_POST["ftpserver2"]); }
-	else                                         { $net2ftp_globals["ftpserver2"]     = ""; }
-	if (isset($_POST["ftpserverport2"]) == true) { $net2ftp_globals["ftpserverport2"] = validateFtpserverport($_POST["ftpserverport2"]); }
-	else                                         { $net2ftp_globals["ftpserverport2"] = ""; }
-	if (isset($_POST["username2"]) == true)      { $net2ftp_globals["username2"]      = validateUsername($_POST["username2"]); }
-	else                                         { $net2ftp_globals["username2"]      = ""; }
-	if (isset($_POST["password2"]) == true)      { $net2ftp_globals["password2"]      = validatePassword($_POST["password2"]); }
-	else                                         { $net2ftp_globals["password2"]      = ""; }
-	if (isset($_POST["protocol2"]) == true)      { $net2ftp_globals["protocol2"]      = validateProtocol($_POST["protocol2"]); }
-	else                                         { $net2ftp_globals["protocol2"]      = ""; }
+	if (isset($_POST["protocol2"]) == true)       { $net2ftp_globals["protocol2"]       = validateProtocol($_POST["protocol2"]); }
+	else                                          { $net2ftp_globals["protocol2"]       = ""; }
+	if (isset($_POST["ftpserver2"]) == true)      { $net2ftp_globals["ftpserver2"]      = validateFtpserver($_POST["ftpserver2"]); }
+	else                                          { $net2ftp_globals["ftpserver2"]      = ""; }
+	if (isset($_POST["ftpserverport2"]) == true)  { $net2ftp_globals["ftpserverport2"]  = validateFtpserverport($_POST["ftpserverport2"]); }
+	else                                          { $net2ftp_globals["ftpserverport2"]  = ""; }
+	if (isset($_POST["sshfingerprint2"]) == true) { $net2ftp_globals["sshfingerprint2"] = validateSshfingerprint($_POST["sshfingerprint2"]); }
+	else                                          { $net2ftp_globals["sshfingerprint2"] = ""; }
+	if (isset($_POST["username2"]) == true)       { $net2ftp_globals["username2"]       = validateUsername($_POST["username2"]); }
+	else                                          { $net2ftp_globals["username2"]       = ""; }
+	if (isset($_POST["password2"]) == true)       { $net2ftp_globals["password2"]       = validatePassword($_POST["password2"]); }
+	else                                          { $net2ftp_globals["password2"]       = ""; }
 
 // Edit
 	if (isset($_POST["textareaType"]) == true)  { $textareaType = validateTextareaType($_POST["textareaType"]); }
@@ -179,6 +268,7 @@ function net2ftp_module_printBody() {
 	if (isset($_POST["searchoptions"]) == true) { $searchoptions = $_POST["searchoptions"]; }
 
 // New directory
+
 // Rename
 	if (isset($_POST["newNames"]) == true) { $newNames = validateEntry($_POST["newNames"]); }
 	else                                   { $newNames = ""; }
@@ -195,7 +285,7 @@ function net2ftp_module_printBody() {
 // Variables for all screens
 // -------------------------------------------------------------------------
 
-	$formname = "LoginForm";
+	$formname = "LoginForm1";
 	$enctype = "";
 
 	if ($net2ftp_globals["state2"] == "admin") {
@@ -212,15 +302,18 @@ function net2ftp_module_printBody() {
 		$button_text = __("Login");
 		$username_fieldname = "username";
 		$password_fieldname = "password";
+		$username_value = ""; 
+		$password_value = "";
 		if (isset($net2ftp_globals["username"]) == true) { 
 			$username_value = htmlEncode2($net2ftp_globals["username"]); 
 			$focus = $password_fieldname;
 		}
 		else { 
-			$username_value = ""; 
 			$focus = $username_fieldname;
 		}
-		$password_value = "";
+		if (isset($net2ftp_globals["password_encrypted"]) == true) { 
+			$password_value = htmlEncode2(decryptPassword($net2ftp_globals["password_encrypted"])); 
+		}
 	}
 	elseif ($net2ftp_globals["state2"] == "session_expired") {
 		$message = __("Your session has expired; please enter your password for FTP server <b>%1\$s</b> to continue.", htmlEncode2($net2ftp_globals["ftpserver"]));

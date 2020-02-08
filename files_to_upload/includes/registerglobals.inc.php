@@ -2,7 +2,7 @@
 
 //   -------------------------------------------------------------------------------
 //  |                  net2ftp: a web based FTP client                              |
-//  |              Copyright (c) 2003-2013 by David Gartner                         |
+//  |              Copyright (c) 2003-2017 by David Gartner                         |
 //  |                                                                               |
 //  | This program is free software; you can redistribute it and/or                 |
 //  | modify it under the terms of the GNU General Public License                   |
@@ -17,14 +17,9 @@ defined("NET2FTP") or die("Direct access to this location is not allowed.");
 // -------------------------------------------------------------------------
 // Overview of the code
 // 1   Replace \' by ' (remove_magic_quotes)
-// 2   Start the session
-// 3   Register $_SERVER variables
-// 4.1 Register main variables - POST method
-// 4.2 Register main variables - GET method
-// 5.1 Delete the session data when logging out
-// 5.2 Redirect to login_small if session has expired
-// 6   Register $_COOKIE variables
-// 7   Determine the browser agent, version and platform
+// 2   Register main variables
+// 3   Register $_COOKIE variables
+// 4   Determine the browser agent, version and platform
 // -------------------------------------------------------------------------
 
 // -------------------------------------------------------------------------
@@ -42,128 +37,102 @@ if (get_magic_quotes_gpc() == 1) {
 
 
 // -------------------------------------------------------------------------
-// 2 Start the session
+// 2 Global variabes
 // -------------------------------------------------------------------------
 
-if (function_exists("session_name") == false) {
-	$net2ftp_result["success"]         = false;
-	$net2ftp_result["error_message"]   = "Sessions are not supported on this server.";
-	$net2ftp_result["debug_backtrace"] = debug_backtrace();
-	logError();
-	return false;
-}
+// ----------------------------------------------
+// consent variables
+// ----------------------------------------------
+if (isset($_POST["consent_necessary"]) == true && $_POST["consent_necessary"] == 1) { $net2ftp_globals["consent_necessary"] = 1; }
+else                                                                                { $net2ftp_globals["consent_necessary"] = 0; }
 
-// PMA - Cookies are safer
-ini_set("session.use_cookies", true);
+if (isset($_POST["consent_preferences"]) == true && $_POST["consent_preferences"] == 1) { $net2ftp_globals["consent_preferences"] = 1; }
+else                                                                                    { $net2ftp_globals["consent_preferences"] = 0; }
 
-// PMA - but not all user allow cookies
-ini_set("session.use_only_cookies", false);
-ini_set("session.use_trans_sid", true);
+if (isset($_POST["consent_statistics"]) == true && $_POST["consent_statistics"] == 1) { $net2ftp_globals["consent_statistics"] = 1; }
+else                                                                                  { $net2ftp_globals["consent_statistics"] = 0; }
 
-// PMA - Delete session/cookies when browser is closed
-ini_set("session.cookie_lifetime", 0);
+if (isset($_POST["consent_personalized_ads"]) == true && $_POST["consent_personalized_ads"] == 1) { $net2ftp_globals["consent_personalized_ads"] = 1; }
+else                                                                                              { $net2ftp_globals["consent_personalized_ads"] = 0; }
 
-// PMA - Warn but dont work with bug
-ini_set("session.bug_compat_42", false);
-ini_set("session.bug_compat_warn", true);
+if (isset($_POST["consent_nonpersonalized_ads"]) == true && $_POST["consent_nonpersonalized_ads"] == 1) { $net2ftp_globals["consent_nonpersonalized_ads"] = 1; }
+else                                                                                                    { $net2ftp_globals["consent_nonpersonalized_ads"] = 0; }
 
-// PMA - Use more secure session ids (with PHP 5)
-if (version_compare(PHP_VERSION, "5.0.0", "ge") && substr(PHP_OS, 0, 3) != "WIN") {
-	ini_set("session.hash_function", 1);
-	ini_set("session.hash_bits_per_character", 6);
-}
+// ----------------------------------------------
+// user_email
+// ----------------------------------------------
+if     (isset($_POST["user_email"]) == true && checkEmailAddress($_POST["user_email"]) == true) { $net2ftp_globals["user_email"] = $_POST["user_email"]; }
+elseif (isset($_GET["user_email"])  == true  && checkEmailAddress($_GET["user_email"]) == true) { $net2ftp_globals["user_email"] = $_GET["user_email"]; }
+else   { $net2ftp_globals["user_email"] = "invalid_user_email"; }
 
-// PMA - [2006-01-25] Nicola Asuni - www.tecnick.com: maybe the PHP directive
-// session.save_handler is set to another value like "user"
-ini_set("session.save_handler", "files");
-
-// Start the session
-// PMA - On some servers (for example, sourceforge.net), we get a permission error on the session data directory, so prefix with @
-session_start();
-
-// Check if the session ID and the IP address have changed
-if (isset($_SESSION["net2ftp_session_id_new"]) == true)  { $_SESSION["net2ftp_session_id_old"]  = $_SESSION["net2ftp_session_id_new"]; }
-else                                                     { $_SESSION["net2ftp_session_id_old"]  = ""; }
-if (isset($_SESSION["net2ftp_remote_addr_new"]) == true) { $_SESSION["net2ftp_remote_addr_old"] = $_SESSION["net2ftp_remote_addr_new"]; }
-else                                                     { $_SESSION["net2ftp_remote_addr_old"] = ""; }
-$_SESSION["net2ftp_session_id_new"]  = session_id();
-$_SESSION["net2ftp_remote_addr_new"] = $_SERVER["REMOTE_ADDR"];
-
-// -------------------------------------------------------------------------
-// 3 SERVER variabes
-// -------------------------------------------------------------------------
-if     (isset($_SERVER["SCRIPT_NAME"]) == true) { $net2ftp_globals["PHP_SELF"]        = validateGenericInput($_SERVER["SCRIPT_NAME"]); }
-elseif (isset($_SERVER["PHP_SELF"]) == true)    { $net2ftp_globals["PHP_SELF"]        = validateGenericInput($_SERVER["PHP_SELF"]); }
-else                                            { $net2ftp_globals["PHP_SELF"]        = "index.php"; }
-if (isset($_SERVER["HTTP_REFERER"]) == true)    { $net2ftp_globals["HTTP_REFERER"]    = validateGenericInput($_SERVER["HTTP_REFERER"]); }
-else                                            { $net2ftp_globals["HTTP_REFERER"]    = ""; }
-if (isset($_SERVER["HTTP_USER_AGENT"]) == true) { $net2ftp_globals["HTTP_USER_AGENT"] = validateGenericInput($_SERVER["HTTP_USER_AGENT"]); }
+// ----------------------------------------------
+// user_ipadress
+// ----------------------------------------------
 if (isset($_SERVER["REMOTE_ADDR"]) == true)     { $net2ftp_globals["REMOTE_ADDR"]     = validateGenericInput($_SERVER["REMOTE_ADDR"]); }
+
+// ----------------------------------------------
+// user_port
+// ----------------------------------------------
 if (isset($_SERVER["REMOTE_PORT"]) == true)     { $net2ftp_globals["REMOTE_PORT"]     = validateGenericInput($_SERVER["REMOTE_PORT"]); }
 
+// ----------------------------------------------
+// user_http_user_agent
+// ----------------------------------------------
+if (isset($_SERVER["HTTP_USER_AGENT"]) == true) { $net2ftp_globals["user_http_user_agent"] = validateGenericInput($_SERVER["HTTP_USER_AGENT"]); }
+
+// ----------------------------------------------
+// privacy
+// ----------------------------------------------
+for ($i=1; $i<=10; $i++) {
+	if (isset($net2ftp_settings["privacy_policy_" . $i]) && $net2ftp_settings["privacy_policy_" . $i] != "") {
+		if     (isset($_POST["privacy" . $i]) && $_POST["privacy" . $i] == "1") { $net2ftp_globals["privacy" . $i] = "1"; }
+		elseif (isset($_GET["privacy"  . $i]) && $_GET["privacy"  . $i] == "1") { $net2ftp_globals["privacy" . $i] = "1"; }
+		else                                                                    { $net2ftp_globals["privacy" . $i] = "0"; }
+	}
+} // end for
+
+// ----------------------------------------------
+// page
+// ----------------------------------------------
+if     (isset($_SERVER["SCRIPT_NAME"]) == true) { $net2ftp_globals["page"]        = validateGenericInput($_SERVER["SCRIPT_NAME"]); }
+elseif (isset($_SERVER["PHP_SELF"]) == true)    { $net2ftp_globals["page"]        = validateGenericInput($_SERVER["PHP_SELF"]); }
+else                                            { $net2ftp_globals["page"]        = "index.php"; }
 // Action URL
 // Note that later on in this file parameters may be appended to the action_url (for Mambo and Drupal)
-$net2ftp_globals["action_url"] = $net2ftp_globals["PHP_SELF"];
-
-
-// -------------------------------------------------------------------------
-// 4 Register main variables
-// -------------------------------------------------------------------------
+$net2ftp_globals["action_url"] = $net2ftp_globals["page"];
 
 // ----------------------------------------------
-// FTP server
+// state
 // ----------------------------------------------
-if     (isset($_POST["ftpserver"]) == true) { $net2ftp_globals["ftpserver"] = validateFtpserver($_POST["ftpserver"]); }
-elseif (isset($_GET["ftpserver"]) == true)  { $net2ftp_globals["ftpserver"] = validateFtpserver($_GET["ftpserver"]); }
-else                                        { $net2ftp_globals["ftpserver"] = validateFtpserver(""); }
-$net2ftp_globals["ftpserver_html"] = htmlEncode2($net2ftp_globals["ftpserver"]);
-$net2ftp_globals["ftpserver_url"]  = urlEncode2($net2ftp_globals["ftpserver"]);
-$net2ftp_globals["ftpserver_js"]   = javascriptEncode2($net2ftp_globals["ftpserver"]);
+if     (isset($_POST["state"]) == true) { $net2ftp_globals["state"] = validateState($_POST["state"]); }
+elseif (isset($_GET["state"]) == true)  { $net2ftp_globals["state"] = validateState($_GET["state"]); }
+else                                    { $net2ftp_globals["state"] = validateState(""); }
+$net2ftp_globals["state_html"] = htmlEncode2($net2ftp_globals["state"]);
+$net2ftp_globals["state_url"]  = urlEncode2($net2ftp_globals["state"]);
+$net2ftp_globals["state_js"]   = javascriptEncode2($net2ftp_globals["state"]);
 
 // ----------------------------------------------
-// FTP server port
+// state2
 // ----------------------------------------------
-if     (isset($_POST["ftpserverport"]) == true) { $net2ftp_globals["ftpserverport"] = validateFtpserverport($_POST["ftpserverport"]); }
-elseif (isset($_GET["ftpserverport"]) == true)  { $net2ftp_globals["ftpserverport"] = validateFtpserverport($_GET["ftpserverport"]); }
-else                                            { $net2ftp_globals["ftpserverport"] = validateFtpserverport(""); }
-$net2ftp_globals["ftpserverport_html"] = htmlEncode2($net2ftp_globals["ftpserverport"]);
-$net2ftp_globals["ftpserverport_url"]  = urlEncode2($net2ftp_globals["ftpserverport"]);
-$net2ftp_globals["ftpserverport_js"]   = javascriptEncode2($net2ftp_globals["ftpserverport"]);
+if     (isset($_POST["state2"]) == true) { $net2ftp_globals["state2"] = validateState2($_POST["state2"]); }
+elseif (isset($_GET["state2"]) == true)  { $net2ftp_globals["state2"] = validateState2($_GET["state2"]); }
+else                                     { $net2ftp_globals["state2"] = validateState2(""); }
+$net2ftp_globals["state2_html"] = htmlEncode2($net2ftp_globals["state2"]);
+$net2ftp_globals["state2_url"]  = urlEncode2($net2ftp_globals["state2"]);
+$net2ftp_globals["state2_js"]   = javascriptEncode2($net2ftp_globals["state2"]);
 
 // ----------------------------------------------
-// Username
+// screen
 // ----------------------------------------------
-if     (isset($_POST["username"]) == true) { $net2ftp_globals["username"] = validateUsername($_POST["username"]); }
-elseif (isset($_GET["username"]) == true)  { $net2ftp_globals["username"] = validateUsername($_GET["username"]); }
-else                                       { $net2ftp_globals["username"] = validateUsername(""); }
-$net2ftp_globals["username_html"] = htmlEncode2($net2ftp_globals["username"]);
-$net2ftp_globals["username_url"]  = urlEncode2($net2ftp_globals["username"]);
-$net2ftp_globals["username_js"]   = javascriptEncode2($net2ftp_globals["username"]);
+if     (isset($_POST["screen"]) == true) { $net2ftp_globals["screen"] = validateScreen($_POST["screen"]); }
+elseif (isset($_GET["screen"]) == true)  { $net2ftp_globals["screen"] = validateScreen($_GET["screen"]); }
+else                                     { $net2ftp_globals["screen"] = validateScreen(""); }
+$net2ftp_globals["screen_html"] = htmlEncode2($net2ftp_globals["screen"]);
+$net2ftp_globals["screen_url"]  = urlEncode2($net2ftp_globals["screen"]);
+$net2ftp_globals["screen_js"]   = javascriptEncode2($net2ftp_globals["screen"]);
 
 // ----------------------------------------------
-// Password
-// ----------------------------------------------
-// From login form
-if (isset($_POST["password"]) == true) {
-	$net2ftp_globals["password_encrypted"]  = encryptPassword(trim($_POST["password"]));
-	$_SESSION["net2ftp_password_encrypted_" . $net2ftp_globals["ftpserver"] . $net2ftp_globals["username"]] = encryptPassword(trim($_POST["password"]));
-	$_SESSION["net2ftp_session_id_old"]  = $_SESSION["net2ftp_session_id_new"];
-}
-// From the login_small form (from a bookmark)
-elseif (isset($_GET["password_encrypted"]) == true) {
-	$net2ftp_globals["password_encrypted"]  = validatePasswordEncrypted($_GET["password_encrypted"]);
-	$_SESSION["net2ftp_password_encrypted_" . $net2ftp_globals["ftpserver"] . $net2ftp_globals["username"]] = $net2ftp_globals["password_encrypted"];
-	$_SESSION["net2ftp_session_id_old"]  = $_SESSION["net2ftp_session_id_new"];
-}
-// From the openlaszlo skin
-elseif (isset($_POST["password_encrypted"]) == true) {
-	$net2ftp_globals["password_encrypted"]  = trim($_POST["password_encrypted"]);
-	$_SESSION["net2ftp_password_encrypted_" . $net2ftp_globals["ftpserver"] . $net2ftp_globals["username"]] = trim($_POST["password_encrypted"]);
-	$_SESSION["net2ftp_session_id_old"]  = $_SESSION["net2ftp_session_id_new"];
-}
-
-// ----------------------------------------------
-// Language
+// language
 // ----------------------------------------------
 if     (isset($_POST["language"]) == true) { $net2ftp_globals["language"] = validateLanguage($_POST["language"]); }
 elseif (isset($_GET["language"]) == true)  { $net2ftp_globals["language"] = validateLanguage($_GET["language"]); }
@@ -173,7 +142,8 @@ $net2ftp_globals["language_url"]  = urlEncode2($net2ftp_globals["language"]);
 $net2ftp_globals["language_js"]   = javascriptEncode2($net2ftp_globals["language"]);
 
 // ----------------------------------------------
-// Skin
+// skin
+// First determine language, then skin (because skin needs to know which is the language)
 // ----------------------------------------------
 if     (isset($_POST["skin"]) == true) { $net2ftp_globals["skin"] = validateSkin($_POST["skin"]); }
 elseif (isset($_GET["skin"]) == true)  { $net2ftp_globals["skin"] = validateSkin($_GET["skin"]); }
@@ -186,6 +156,104 @@ $skinArray = getSkinArray();
 $net2ftp_globals["image_url"] = $skinArray[$net2ftp_globals["skin"]]["image_url"];
 
 // ----------------------------------------------
+// protocol (FTP, FTP with SSL, FTP over SSH)
+// ----------------------------------------------
+if     (isset($_POST["protocol"]) == true) { $net2ftp_globals["protocol"] = validateProtocol($_POST["protocol"]); }
+elseif (isset($_GET["protocol"]) == true)  { $net2ftp_globals["protocol"] = validateProtocol($_GET["protocol"]); }
+else                                       { $net2ftp_globals["protocol"] = validateProtocol(""); }
+$net2ftp_globals["protocol_html"] = htmlEncode2($net2ftp_globals["protocol"]);
+$net2ftp_globals["protocol_url"]  = urlEncode2($net2ftp_globals["protocol"]);
+$net2ftp_globals["protocol_js"]   = javascriptEncode2($net2ftp_globals["protocol"]);
+
+// ----------------------------------------------
+// FTP or SSH server
+// ----------------------------------------------
+if     (isset($_POST["ftpserver"]) == true) { $net2ftp_globals["ftpserver"] = validateFtpserver($_POST["ftpserver"]); }
+elseif (isset($_GET["ftpserver"]) == true)  { $net2ftp_globals["ftpserver"] = validateFtpserver($_GET["ftpserver"]); }
+else                                        { $net2ftp_globals["ftpserver"] = validateFtpserver(""); }
+$net2ftp_globals["ftpserver_html"] = htmlEncode2($net2ftp_globals["ftpserver"]);
+$net2ftp_globals["ftpserver_url"]  = urlEncode2($net2ftp_globals["ftpserver"]);
+$net2ftp_globals["ftpserver_js"]   = javascriptEncode2($net2ftp_globals["ftpserver"]);
+
+// ----------------------------------------------
+// FTP or SSH server port
+// ----------------------------------------------
+if     (isset($_POST["ftpserverport"]) == true) { $net2ftp_globals["ftpserverport"] = validateFtpserverport($_POST["ftpserverport"]); }
+elseif (isset($_GET["ftpserverport"]) == true)  { $net2ftp_globals["ftpserverport"] = validateFtpserverport($_GET["ftpserverport"]); }
+else                                            { $net2ftp_globals["ftpserverport"] = validateFtpserverport(""); }
+$net2ftp_globals["ftpserverport_html"] = htmlEncode2($net2ftp_globals["ftpserverport"]);
+$net2ftp_globals["ftpserverport_url"]  = urlEncode2($net2ftp_globals["ftpserverport"]);
+$net2ftp_globals["ftpserverport_js"]   = javascriptEncode2($net2ftp_globals["ftpserverport"]);
+
+// ----------------------------------------------
+// username
+// ----------------------------------------------
+if     (isset($_POST["username"]) == true) { $net2ftp_globals["username"] = validateUsername($_POST["username"]); }
+elseif (isset($_GET["username"]) == true)  { $net2ftp_globals["username"] = validateUsername($_GET["username"]); }
+else                                       { $net2ftp_globals["username"] = validateUsername(""); }
+$net2ftp_globals["username_html"] = htmlEncode2($net2ftp_globals["username"]);
+$net2ftp_globals["username_url"]  = urlEncode2($net2ftp_globals["username"]);
+$net2ftp_globals["username_js"]   = javascriptEncode2($net2ftp_globals["username"]);
+
+// ----------------------------------------------
+// password
+// ----------------------------------------------
+// From login form
+if (isset($_POST["password"]) == true) {
+	$net2ftp_globals["password_encrypted"]  = encryptPassword(trim($_POST["password"]));
+}
+// From most other screens
+elseif (isset($_POST["password_encrypted"]) == true) {
+	$net2ftp_globals["password_encrypted"]  = trim($_POST["password_encrypted"]);
+}
+// From the login_small form (from a bookmark)
+elseif (isset($_GET["password_encrypted"]) == true) {
+	$net2ftp_globals["password_encrypted"]  = validatePasswordEncrypted($_GET["password_encrypted"]);
+}
+else {
+	$net2ftp_globals["password_encrypted"] = "";
+}
+
+
+// ----------------------------------------------
+// directory
+// ----------------------------------------------
+if     (isset($_POST["directory"]) == true) { $net2ftp_globals["directory"] = validateDirectory($_POST["directory"]); }
+elseif (isset($_GET["directory"]) == true)  { $net2ftp_globals["directory"] = validateDirectory($_GET["directory"]); }
+else                                        { $net2ftp_globals["directory"] = ""; }
+$net2ftp_globals["directory_html"] = htmlEncode2($net2ftp_globals["directory"]);
+$net2ftp_globals["directory_url"]  = urlEncode2($net2ftp_globals["directory"]);
+$net2ftp_globals["directory_js"]   = javascriptEncode2($net2ftp_globals["directory"]);
+
+// printdirectory
+if ($net2ftp_globals["directory"] != "" && $net2ftp_globals["directory"] != "/") {
+	$net2ftp_globals["printdirectory"] = $net2ftp_globals["directory"];
+}
+else { 
+	$net2ftp_globals["printdirectory"] = "/"; 
+}
+
+// ----------------------------------------------
+// entry
+// ----------------------------------------------
+if     (isset($_POST["entry"]) == true) { $net2ftp_globals["entry"] = validateEntry($_POST["entry"]); }
+elseif (isset($_GET["entry"]) == true)  { $net2ftp_globals["entry"] = validateEntry($_GET["entry"]); }
+else                                    { $net2ftp_globals["entry"] = ""; }
+$net2ftp_globals["entry_html"] = htmlEncode2($net2ftp_globals["entry"]);
+$net2ftp_globals["entry_url"]  = urlEncode2($net2ftp_globals["entry"]);
+$net2ftp_globals["entry_js"]   = javascriptEncode2($net2ftp_globals["entry"]);
+
+// ----------------------------------------------
+// SSH server fingerprint
+// ----------------------------------------------
+if     (isset($_POST["sshfingerprint"]) == true) { $net2ftp_globals["sshfingerprint"] = validateSshfingerprint($_POST["sshfingerprint"]); }
+elseif (isset($_GET["sshfingerprint"]) == true)  { $net2ftp_globals["sshfingerprint"] = validateSshfingerprint($_GET["sshfingerprint"]); }
+else                                             { $net2ftp_globals["sshfingerprint"] = validateSshfingerprint(""); }
+$net2ftp_globals["sshfingerprint_html"] = htmlEncode2($net2ftp_globals["sshfingerprint"]);
+$net2ftp_globals["sshfingerprint_url"]  = urlEncode2($net2ftp_globals["sshfingerprint"]);
+$net2ftp_globals["sshfingerprint_js"]   = javascriptEncode2($net2ftp_globals["sshfingerprint"]);
+
+// ----------------------------------------------
 // FTP mode
 // ----------------------------------------------
 if     (isset($_POST["ftpmode"]) == true) { $net2ftp_globals["ftpmode"] = validateFtpmode($_POST["ftpmode"]); }
@@ -196,7 +264,7 @@ $net2ftp_globals["ftpmode_url"]  = urlEncode2($net2ftp_globals["ftpmode"]);
 $net2ftp_globals["ftpmode_js"]   = javascriptEncode2($net2ftp_globals["ftpmode"]);
 
 // ----------------------------------------------
-// Passive mode
+// passive mode
 // ----------------------------------------------
 if     (isset($_POST["passivemode"]) == true) { $net2ftp_globals["passivemode"] = validatePassivemode($_POST["passivemode"]); }
 elseif (isset($_GET["passivemode"]) == true)  { $net2ftp_globals["passivemode"] = validatePassivemode($_GET["passivemode"]); }
@@ -206,17 +274,7 @@ $net2ftp_globals["passivemode_url"]  = urlEncode2($net2ftp_globals["passivemode"
 $net2ftp_globals["passivemode_js"]   = javascriptEncode2($net2ftp_globals["passivemode"]);
 
 // ----------------------------------------------
-// Protocol (FTP, FTP with SSL, FTP over SSH)
-// ----------------------------------------------
-if     (isset($_POST["protocol"]) == true) { $net2ftp_globals["protocol"] = validateProtocol($_POST["protocol"]); }
-elseif (isset($_GET["protocol"]) == true)  { $net2ftp_globals["protocol"] = validateProtocol($_GET["protocol"]); }
-else                                       { $net2ftp_globals["protocol"] = validateProtocol(""); }
-$net2ftp_globals["protocol_html"] = htmlEncode2($net2ftp_globals["protocol"]);
-$net2ftp_globals["protocol_url"]  = urlEncode2($net2ftp_globals["protocol"]);
-$net2ftp_globals["protocol_js"]   = javascriptEncode2($net2ftp_globals["protocol"]);
-
-// ----------------------------------------------
-// View mode
+// view mode
 // ----------------------------------------------
 if     (isset($_POST["viewmode"]) == true) { $net2ftp_globals["viewmode"] = validateViewmode($_POST["viewmode"]); }
 elseif (isset($_GET["viewmode"]) == true)  { $net2ftp_globals["viewmode"] = validateViewmode($_GET["viewmode"]); }
@@ -246,64 +304,6 @@ $net2ftp_globals["sortorder_url"]  = urlEncode2($net2ftp_globals["sortorder"]);
 $net2ftp_globals["sortorder_js"]   = javascriptEncode2($net2ftp_globals["sortorder"]);
 
 // ----------------------------------------------
-// State
-// ----------------------------------------------
-if     (isset($_POST["state"]) == true) { $net2ftp_globals["state"] = validateState($_POST["state"]); }
-elseif (isset($_GET["state"]) == true)  { $net2ftp_globals["state"] = validateState($_GET["state"]); }
-else                                    { $net2ftp_globals["state"] = validateState(""); }
-$net2ftp_globals["state_html"] = htmlEncode2($net2ftp_globals["state"]);
-$net2ftp_globals["state_url"]  = urlEncode2($net2ftp_globals["state"]);
-$net2ftp_globals["state_js"]   = javascriptEncode2($net2ftp_globals["state"]);
-
-// ----------------------------------------------
-// State2
-// ----------------------------------------------
-if     (isset($_POST["state2"]) == true) { $net2ftp_globals["state2"] = validateState2($_POST["state2"]); }
-elseif (isset($_GET["state2"]) == true)  { $net2ftp_globals["state2"] = validateState2($_GET["state2"]); }
-else                                     { $net2ftp_globals["state2"] = validateState2(""); }
-$net2ftp_globals["state2_html"] = htmlEncode2($net2ftp_globals["state2"]);
-$net2ftp_globals["state2_url"]  = urlEncode2($net2ftp_globals["state2"]);
-$net2ftp_globals["state2_js"]   = javascriptEncode2($net2ftp_globals["state2"]);
-
-// ----------------------------------------------
-// Directory
-// ----------------------------------------------
-if     (isset($_POST["directory"]) == true) { $net2ftp_globals["directory"] = validateDirectory($_POST["directory"]); }
-elseif (isset($_GET["directory"]) == true)  { $net2ftp_globals["directory"] = validateDirectory($_GET["directory"]); }
-else                                        { $net2ftp_globals["directory"] = ""; }
-$net2ftp_globals["directory_html"] = htmlEncode2($net2ftp_globals["directory"]);
-$net2ftp_globals["directory_url"]  = urlEncode2($net2ftp_globals["directory"]);
-$net2ftp_globals["directory_js"]   = javascriptEncode2($net2ftp_globals["directory"]);
-
-// printdirectory
-if ($net2ftp_globals["directory"] != "" && $net2ftp_globals["directory"] != "/") {
-	$net2ftp_globals["printdirectory"] = $net2ftp_globals["directory"];
-}
-else { 
-	$net2ftp_globals["printdirectory"] = "/"; 
-}
-
-// ----------------------------------------------
-// Entry
-// ----------------------------------------------
-if     (isset($_POST["entry"]) == true) { $net2ftp_globals["entry"] = validateEntry($_POST["entry"]); }
-elseif (isset($_GET["entry"]) == true)  { $net2ftp_globals["entry"] = validateEntry($_GET["entry"]); }
-else                                    { $net2ftp_globals["entry"] = ""; }
-$net2ftp_globals["entry_html"] = htmlEncode2($net2ftp_globals["entry"]);
-$net2ftp_globals["entry_url"]  = urlEncode2($net2ftp_globals["entry"]);
-$net2ftp_globals["entry_js"]   = javascriptEncode2($net2ftp_globals["entry"]);
-
-// ----------------------------------------------
-// Screen
-// ----------------------------------------------
-if     (isset($_POST["screen"]) == true) { $net2ftp_globals["screen"] = validateScreen($_POST["screen"]); }
-elseif (isset($_GET["screen"]) == true)  { $net2ftp_globals["screen"] = validateScreen($_GET["screen"]); }
-else                                     { $net2ftp_globals["screen"] = validateScreen(""); }
-$net2ftp_globals["screen_html"] = htmlEncode2($net2ftp_globals["screen"]);
-$net2ftp_globals["screen_url"]  = urlEncode2($net2ftp_globals["screen"]);
-$net2ftp_globals["screen_js"]   = javascriptEncode2($net2ftp_globals["screen"]);
-
-// ----------------------------------------------
 // MAMBO variables
 // ----------------------------------------------
 if (defined("_VALID_MOS") == true) {
@@ -321,49 +321,62 @@ if (defined("CACHE_PERMANENT") == true) {
 }
 
 
-// -------------------------------------------------------------------------
-// 5.1 Delete the session data when logging out
-// -------------------------------------------------------------------------
-if ($net2ftp_globals["state"] == "logout") {
-	$_SESSION["net2ftp_password_encrypted_" . $net2ftp_globals["ftpserver"] . $net2ftp_globals["username"]] = "";
-}
 
 // -------------------------------------------------------------------------
-// 5.2 Redirect to login_small 
-//         if session has expired        (not for OpenLaszlo skin as it does not make a connection on the Login screen)
-//         if the IP address has changed (disabled as this may cause problems for some people)
-//         if the password is blank
+// 3 COOKIE variabes
 // -------------------------------------------------------------------------
-//if ($net2ftp_globals["state"] != "login" && $net2ftp_globals["state"] != "login_small" && 
-//	$_SESSION["net2ftp_session_id_old"] != $_SESSION["net2ftp_session_id_new"]) {
-//	$net2ftp_globals["go_to_state"]  = $net2ftp_globals["state"];
-//	$net2ftp_globals["go_to_state2"] = $net2ftp_globals["state2"];
-//	$net2ftp_globals["state"]        = "login_small";
-//	$net2ftp_globals["state2"]       = "session_expired";
-//}
-//elseif ($net2ftp_globals["state"] != "login" && $net2ftp_globals["state"] != "login_small" && 
-//	$_SESSION["net2ftp_remote_addr_old"] != $_SESSION["net2ftp_remote_addr_new"]) { 
-//	$net2ftp_globals["go_to_state"]  = $net2ftp_globals["state"];
-//	$net2ftp_globals["go_to_state2"] = $net2ftp_globals["state2"];
-//	$net2ftp_globals["state"]        = "login_small";
-//	$net2ftp_globals["state2"]       = "session_ipchanged";
-//}
-//elseif (substr($net2ftp_globals["state"], 0, 5) != "admin" && $net2ftp_globals["state"] != "clearcookies" && 
-//	$net2ftp_globals["state"] != "login" && $net2ftp_globals["state"] != "login_small" && 
-//	$net2ftp_globals["state"] != "logout" && $_SESSION["net2ftp_password_encrypted_" . $net2ftp_globals["ftpserver"] . $net2ftp_globals["username"]] == "") { 
-//	$net2ftp_globals["state"]        = "login";
-//	$net2ftp_globals["state2"]       = "";
-//}
 
-// -------------------------------------------------------------------------
-// 6 COOKIE variabes
-// -------------------------------------------------------------------------
-if (isset($_COOKIE["net2ftpcookie_ftpserver"])     == true) { $net2ftp_globals["cookie_ftpserver"]     = validateFtpserver($_COOKIE["net2ftpcookie_ftpserver"]); }
-else                                                        { $net2ftp_globals["cookie_ftpserver"]     = ""; }
-if (isset($_COOKIE["net2ftpcookie_ftpserverport"]) == true) { $net2ftp_globals["cookie_ftpserverport"] = validateFtpserverport($_COOKIE["net2ftpcookie_ftpserverport"]); }
-else                                                        { $net2ftp_globals["cookie_ftpserverport"] = ""; }
-if (isset($_COOKIE["net2ftpcookie_username"])      == true) { $net2ftp_globals["cookie_username"]      = validateUsername($_COOKIE["net2ftpcookie_username"]); }
-else                                                        { $net2ftp_globals["cookie_username"]      = ""; }
+// ----------------------------------------------
+// Consent cookies
+// Set by net2ftp login, login_small and browse modules, and removed by net2ftp clearcookies module
+// ----------------------------------------------
+if (isset($_COOKIE["net2ftpcookie_consent_necessary"]) == true && $_COOKIE["consent_necessary"] == 1)                      { $net2ftp_globals["cookie_consent_necessary"] = 1; }
+else                                                                                                                       { $net2ftp_globals["cookie_consent_necessary"] = 0; }
+if (isset($_COOKIE["net2ftpcookie_consent_preferences"]) == true && $_COOKIE["consent_preferences"] == 1)                  { $net2ftp_globals["cookie_consent_preferences"] = 1; }
+else                                                                                                                       { $net2ftp_globals["cookie_consent_preferences"] = 0; }
+if (isset($_COOKIE["net2ftpcookie_consent_statistics"]) == true && $_COOKIE["consent_statistics"] == 1)                    { $net2ftp_globals["cookie_consent_statistics"] = 1; }
+else                                                                                                                       { $net2ftp_globals["cookie_consent_statistics"] = 0; }
+if (isset($_COOKIE["net2ftpcookie_consent_personalized_ads"]) == true && $_COOKIE["consent_personalized_ads"] == 1)        { $net2ftp_globals["cookie_consent_personalized_ads"] = 1; }
+else                                                                                                                       { $net2ftp_globals["cookie_consent_personalized_ads"] = 0; }
+if (isset($_COOKIE["net2ftpcookie_consent_nonpersonalized_ads"]) == true && $_COOKIE["consent_nonpersonalized_ads"] == 1)  { $net2ftp_globals["cookie_consent_nonpersonalized_ads"] = 1; }
+else                                                                                                                       { $net2ftp_globals["cookie_consent_nonpersonalized_ads"] = 0; }
+if (isset($_COOKIE["net2ftpcookie_user_email"])== true && checkEmailAddress($_COOKIE["net2ftpcookie_user_email"]) == true) { $net2ftp_globals["cookie_user_email"] = $_COOKIE["net2ftpcookie_user_email"]; }
+else                                                                                                                       { $net2ftp_globals["cookie_user_email"] = ""; }
+for ($i=1; $i<=10; $i++) {
+	if (isset($net2ftp_settings["privacy_policy_" . $i]) && $net2ftp_settings["privacy_policy_" . $i] != "") {
+		if (isset($_COOKIE["net2ftpcookie_privacy" . $i]) == true && $_COOKIE["net2ftpcookie_privacy" . $i] == "1")    { $net2ftp_globals["cookie_privacy" . $i] = $_COOKIE["net2ftpcookie_privacy" . $i]; }
+		else                                                                                                           { $net2ftp_globals["cookie_privacy" . $i] = "0"; }
+	}
+} // end for
+
+// ----------------------------------------------
+// Necessary cookies
+// e.g. for Google Captcha
+// ----------------------------------------------
+
+// ----------------------------------------------
+// Preferences
+// Set by net2ftp browse module, and removed by net2ftp clearcookies module
+// ----------------------------------------------
+
+if (isset($_COOKIE["net2ftpcookie_protocol"])      == true)     { $net2ftp_globals["cookie_protocol"]          = validateProtocol($_COOKIE["net2ftpcookie_protocol"]); }
+else                                                            { $net2ftp_globals["cookie_protocol"]          = ""; }
+if (isset($_COOKIE["net2ftpcookie_ftpserver"])     == true)     { $net2ftp_globals["cookie_ftpserver"]         = validateFtpserver($_COOKIE["net2ftpcookie_ftpserver"]); }
+else                                                            { $net2ftp_globals["cookie_ftpserver"]         = ""; }
+if (isset($_COOKIE["net2ftpcookie_ftpserverport"]) == true)     { $net2ftp_globals["cookie_ftpserverport"]     = validateFtpserverport($_COOKIE["net2ftpcookie_ftpserverport"]); }
+else                                                            { $net2ftp_globals["cookie_ftpserverport"]     = ""; }
+if (isset($_COOKIE["net2ftpcookie_ftpserverport_ftp"]) == true) { $net2ftp_globals["cookie_ftpserverport_ftp"] = validateFtpserverport($_COOKIE["net2ftpcookie_ftpserverport_ftp"]); }
+else                                                            { $net2ftp_globals["cookie_ftpserverport_ftp"] = ""; }
+if (isset($_COOKIE["net2ftpcookie_ftpserverport_ssh"]) == true) { $net2ftp_globals["cookie_ftpserverport_ssh"] = validateFtpserverport($_COOKIE["net2ftpcookie_ftpserverport_ssh"]); }
+else                                                            { $net2ftp_globals["cookie_ftpserverport_ssh"] = ""; }
+if (isset($_COOKIE["net2ftpcookie_ftpserverport_ssl"]) == true) { $net2ftp_globals["cookie_ftpserverport_ssl"] = validateFtpserverport($_COOKIE["net2ftpcookie_ftpserverport_ssl"]); }
+else                                                            { $net2ftp_globals["cookie_ftpserverport_ssl"] = ""; }
+if (isset($_COOKIE["net2ftpcookie_sshfingerprint"])== true)     { $net2ftp_globals["cookie_sshfingerprint"]    = validateSshfingerprint($_COOKIE["net2ftpcookie_sshfingerprint"]); }
+else                                                            { $net2ftp_globals["cookie_sshfingerprint"]    = ""; }
+if (isset($_COOKIE["net2ftpcookie_username"])      == true)     { $net2ftp_globals["cookie_username"]          = validateUsername($_COOKIE["net2ftpcookie_username"]); }
+else                                                            { $net2ftp_globals["cookie_username"]          = ""; }
+// Don't store the password in a cookie
+//
 if (isset($_COOKIE["net2ftpcookie_language"])      == true) { $net2ftp_globals["cookie_language"]      = validateLanguage($_COOKIE["net2ftpcookie_language"]); }
 else                                                        { $net2ftp_globals["cookie_language"]      = ""; }
 if (isset($_COOKIE["net2ftpcookie_skin"])          == true) { $net2ftp_globals["cookie_skin"]          = validateSkin($_COOKIE["net2ftpcookie_skin"]); }
@@ -372,8 +385,6 @@ if (isset($_COOKIE["net2ftpcookie_ftpmode"])       == true) { $net2ftp_globals["
 else                                                        { $net2ftp_globals["cookie_ftpmode"]       = ""; }
 if (isset($_COOKIE["net2ftpcookie_passivemode"])   == true) { $net2ftp_globals["cookie_passivemode"]   = validatePassivemode($_COOKIE["net2ftpcookie_passivemode"]); }
 else                                                        { $net2ftp_globals["cookie_passivemode"]   = ""; }
-if (isset($_COOKIE["net2ftpcookie_protocol"])      == true) { $net2ftp_globals["cookie_protocol"]      = validateProtocol($_COOKIE["net2ftpcookie_protocol"]); }
-else                                                        { $net2ftp_globals["cookie_protocol"]      = ""; }
 if (isset($_COOKIE["net2ftpcookie_viewmode"])      == true) { $net2ftp_globals["cookie_viewmode"]      = validateViewmode($_COOKIE["net2ftpcookie_viewmode"]); }
 else                                                        { $net2ftp_globals["cookie_viewmode"]      = ""; }
 if (isset($_COOKIE["net2ftpcookie_directory"])     == true) { $net2ftp_globals["cookie_directory"]     = validateDirectory($_COOKIE["net2ftpcookie_directory"]); }
@@ -383,9 +394,25 @@ else                                                        { $net2ftp_globals["
 if (isset($_COOKIE["net2ftpcookie_sortorder"])     == true) { $net2ftp_globals["cookie_sortorder"]     = validateSortorder($_COOKIE["net2ftpcookie_sortorder"]); }
 else                                                        { $net2ftp_globals["cookie_sortorder"]     = ""; }
 
+// ----------------------------------------------
+// Statistics
+// e.g. for Google Analytics
+// ----------------------------------------------
+
+// ----------------------------------------------
+// Personalized ads
+// e.g. for Google Adsense
+// ----------------------------------------------
+
+// ----------------------------------------------
+// Nonpersonalized ads
+// e.g. for Google Adsense
+// ----------------------------------------------
+
+
 
 // -------------------------------------------------------------------------
-// 7 Get information about the browser and protocol
+// 4 Get information about the browser and protocol
 // -------------------------------------------------------------------------
 $net2ftp_globals["browser_agent"]    = getBrowser("agent");
 $net2ftp_globals["browser_version"]  = getBrowser("version");
@@ -475,6 +502,9 @@ function validateFtpserver($ftpserver) {
 // FTP server may only contain specific characters
 	$ftpserver = preg_replace("/[^A-Za-z0-9._-]/", "", $ftpserver);
 
+// FTP server must be maximum 254 characters
+	if (strlen($ftpserver) > 254) { $ftpserver = left($ftpserver, 254); }
+
 	return $ftpserver;
 
 } // end validateFTPserver
@@ -504,10 +534,39 @@ function validateFtpserverport($ftpserverport) {
 
 // FTP server port must be numeric and > 0 and < 65536, else set it to 21
 	if (is_numeric($ftpserverport) != true || $ftpserverport < 0 || $ftpserverport > 65536) {
-		$ftpserverport = 21;
+		$ftpserverport = "";
 	}	
 
 	return $ftpserverport;
+
+} // end validateFtpserverport
+
+// **                                                                                  **
+// **                                                                                  **
+// **************************************************************************************
+// **************************************************************************************
+
+
+
+
+
+// **************************************************************************************
+// **************************************************************************************
+// **                                                                                  **
+// **                                                                                  **
+
+function validateSshfingerprint($sshfingerprint) {
+
+// --------------
+// This function validates the FTP SSH server fingerprint
+// --------------
+
+// Remove invisible characters in the beginning and at the end
+//	$sshfingerprint = trim($sshfingerprint);
+
+// Do extra checks	
+
+	return $sshfingerprint;
 
 } // end validateFtpserverport
 
@@ -536,6 +595,9 @@ function validateUsername($username) {
 
 // Remove XSS code
 //	$username = RemoveXSS($username);
+
+// Username must be maximum 254 characters
+	if (strlen($username) > 254) { $username = left($username, 254); }
 
 	return $username;
 
@@ -667,13 +729,8 @@ function validateSkin($skin) {
 		return $_COOKIE["net2ftpcookie_skin"];
 	}
 	else {
-		if     (defined("_VALID_MOS")      == true) { return "mambo"; }
-		elseif (defined("CACHE_PERMANENT") == true) { return "drupal"; }
-		elseif (defined("XOOPS_ROOT_PATH") == true) { return "xoops"; }
-		elseif (getBrowser("platform") == "iPhone") { return "iphone"; }
-		elseif (getBrowser("platform") == "Mobile") { return "mobile"; }
-		elseif (isset($skinArray[$net2ftp_settings["default_skin"]]) == true) { return $net2ftp_settings["default_skin"]; }
-		else                                                                  { return "shinra"; }
+		if (isset($skinArray[$net2ftp_settings["default_skin"]]) == true) { return $net2ftp_settings["default_skin"]; }
+		else                                                              { return "shinra"; }
 	}
 
 } // end validateSkin
@@ -760,11 +817,15 @@ function validateProtocol($protocol) {
 // This function validates the protocol
 // --------------
 
+	global $net2ftp_globals;
+
 	if ($protocol == "FTP" || $protocol == "FTP-SSL" || $protocol == "FTP-SSH") {
 		return $protocol;
 	}
-	else {
-		return "FTP";
+	elseif (isset($net2ftp_globals["ftpserverport"]) == true) {
+		if     ($net2ftp_globals["ftpserverport"] == 21)  { return "FTP"; }
+		elseif ($net2ftp_globals["ftpserverport"] == 22)  { return "FTP-SSH"; }
+		elseif ($net2ftp_globals["ftpserverport"] == 990) { return "FTP-SSL"; }
 	}
 
 } // end validateProtocol
@@ -878,6 +939,8 @@ function validateState($state) {
 // This function validates the state variable
 // --------------
 
+	global $net2ftp_globals, $_COOKIE;
+
 	$statelist[] = "admin";
 	$statelist[] = "admin_createtables";
 	$statelist[] = "admin_emptylogs";
@@ -891,6 +954,7 @@ function validateState($state) {
 	$statelist[] = "calculatesize";
 	$statelist[] = "chmod";
 	$statelist[] = "clearcookies";
+	$statelist[] = "consent";
 	$statelist[] = "copymovedelete";
 	$statelist[] = "downloadfile";
 	$statelist[] = "downloadzip";
@@ -898,6 +962,8 @@ function validateState($state) {
 	$statelist[] = "findstring";
 	$statelist[] = "followsymlink";
 	$statelist[] = "getcookies";
+	$statelist[] = "gotopartner";
+	$statelist[] = "homepage";
 	$statelist[] = "install";
 	$statelist[] = "jupload";
 	$statelist[] = "login";
@@ -906,13 +972,19 @@ function validateState($state) {
 	$statelist[] = "newdir";
 	$statelist[] = "raw";
 	$statelist[] = "rename";
+	$statelist[] = "serverfingerprint";
 	$statelist[] = "unzip";
 	$statelist[] = "upload";
       $statelist[] = "view"; 
 	$statelist[] = "zip";
 
 	if (in_array($state, $statelist) == false) {
-		$state = "login";
+		if (isset($_COOKIE["net2ftpcookie_consent_necessary"]) == false && $net2ftp_globals["consent_necessary"] != 1) {
+			$state = "consent";
+		}
+		else {
+			$state = "login";
+		}
 	}
 
 	return $state;

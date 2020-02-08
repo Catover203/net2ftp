@@ -25,9 +25,9 @@
 				<tr>
 					<td><?php echo __("Protocol"); ?>:</td>
 					<td>
-						<select name="protocol">
+						<select name="protocol2">
 <?php						for ($i=1; $i<=sizeof($protocol["list"]); $i=$i+1) { ?>
-							<option value="<?php echo $protocol["list"][$i]; ?>" <?php echo $protocol["list"][$i]["selected"]; ?>><?php echo $protocol["list"][$i]; ?></option>
+							<option value="<?php echo $protocol["list"][$i]["value"]; ?>" <?php echo $protocol["list"][$i]["selected"]; ?>><?php echo $protocol["list"][$i]["name"]; ?></option>
 <?php						} // end for ?>
 						</select>
 					</td>
@@ -40,6 +40,10 @@
 			<tr>
 				<td><?php echo __("Password"); ?>:</td>
 				<td><input type="password" class="input" name="password2" /></td>
+			</tr>
+			<tr>
+				<td><?php echo __("Check the SSH server's public key fingerprint"); ?>:</td>
+				<td><input type="text" class="input" name="sshfingerprint2" value="" /> <input type="button" id="smallbutton" style="width: 120px;" name="Fingerprint" value="<?php echo __("Get fingerprint"); ?>" alt="<?php echo __("Get fingerprint"); ?>" /></td>
 			</tr>
 			<tr>
 				<td colspan="2">

@@ -2,7 +2,7 @@
 
 //   -------------------------------------------------------------------------------
 //  |                  net2ftp: a web based FTP client                              |
-//  |              Copyright (c) 2003-2013 by David Gartner                         |
+//  |              Copyright (c) 2003-2017 by David Gartner                         |
 //  |                                                                               |
 //  | This program is free software; you can redistribute it and/or                 |
 //  | modify it under the terms of the GNU General Public License                   |
@@ -84,7 +84,7 @@ function net2ftp_module_printCss() {
 	global $net2ftp_settings, $net2ftp_globals;
 
 // Include
-	echo "<link rel=\"stylesheet\" type=\"text/css\" href=\"". $net2ftp_globals["application_rootdir_url"] . "/skins/" . $net2ftp_globals["skin"] . "/css/main.css.php?ltr=" . __("ltr") . "&amp;image_url=" . urlEncode2($net2ftp_globals["image_url"]) . "\" />\n";
+//	echo "<link rel=\"stylesheet\" type=\"text/css\" href=\"". $net2ftp_globals["application_rootdir_url"] . "/skins/" . $net2ftp_globals["skin"] . "/css/main.css.php?ltr=" . __("ltr") . "&amp;image_url=" . urlEncode2($net2ftp_globals["image_url"]) . "\" />\n";
 	
 } // end net2ftp_printCssInclude
 
@@ -180,7 +180,7 @@ function net2ftp_module_printBody() {
 // Check the input data
 // --------------------
 // Filename
-		if ($zipactions["save"] == "yes" && $zipactions["save"]["filename"] == "") {
+		if ($zipactions["save"] == "yes" && $zipactions["save_filename"] == "") {
 			$errormessage = __("You did not enter a filename for the zipfile. Go back and enter a filename.") . "<br />";
 			setErrorVars(false, $errormessage, debug_backtrace(), __FILE__, __LINE__);
 			return false;

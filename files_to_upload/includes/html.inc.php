@@ -2,7 +2,7 @@
 
 //   -------------------------------------------------------------------------------
 //  |                  net2ftp: a web based FTP client                              |
-//  |              Copyright (c) 2003-2013 by David Gartner                         |
+//  |              Copyright (c) 2003-2017 by David Gartner                         |
 //  |                                                                               |
 //  | This program is free software; you can redistribute it and/or                 |
 //  | modify it under the terms of the GNU General Public License                   |
@@ -23,19 +23,13 @@
 function timer() {
 
 // --------------
-// This function calculates the time between starttime and endtime in milliseconds
+// This function calculates the time between starttime and endtime in seconds
 // --------------
 
 	global $net2ftp_globals;
+	$time_taken = ($net2ftp_globals["endtime"] - $net2ftp_globals["starttime"]);
 
-	list($start_usec, $start_sec) = explode(' ', $net2ftp_globals["starttime"]);
-	$starttime  = ((float)$start_usec + (float)$start_sec);
-	list($end_usec, $end_sec) = explode(' ', $net2ftp_globals["endtime"]);
-	$endtime    = ((float)$end_usec + (float)$end_sec);
-	$time_taken = ($endtime - $starttime);   // to convert from microsec to sec
-	$time_taken = number_format($time_taken, 2);     // optional
-
-	return $time_taken;
+	return $time_taken; // in seconds
 
 } // End function timer
 
@@ -127,23 +121,23 @@ function getBrowser($what) {
 // !!! If a new browser is added, add is also in the plugin properties
 // Else, functionality will be broken when loading the plugin in printTextareaSelect().
 
-		if (ereg('MSIE ([0-9].[0-9]{1,2})', $http_user_agent, $regs)) {
+		if (preg_match("/^MSIE ([0-9].[0-9]{1,2})/", $http_user_agent, $regs) == 1) {
 			$BROWSER_VERSION = $regs[1];
 			$BROWSER_AGENT = 'IE';
 		}
-		elseif (ereg('Chrome/([0-9]{1,2}.[0-9]{1,4}.[0-9]{1,4}.[0-9]{1,4})', $http_user_agent, $regs)) {
+		elseif (preg_match("/^Chrome\/([0-9]{1,2}.[0-9]{1,4}.[0-9]{1,4}.[0-9]{1,4})/", $http_user_agent, $regs)) {
 			$BROWSER_VERSION = $regs[1];
 			$BROWSER_AGENT = 'Chrome';
 		}
-		elseif (ereg('Safari/([0-9].[0-9]{1,2})', $http_user_agent, $regs)) {
+		elseif (preg_match("/^Safari\/([0-9].[0-9]{1,2})/", $http_user_agent, $regs)) {
 			$BROWSER_VERSION = $regs[1];
 			$BROWSER_AGENT = 'Safari';
 		}
-		elseif (ereg('Opera ([0-9].[0-9]{1,2})', $http_user_agent, $regs)) {
+		elseif (preg_match("/^Opera ([0-9].[0-9]{1,2})/", $http_user_agent, $regs)) {
 			$BROWSER_VERSION = $regs[1];
 			$BROWSER_AGENT = 'Opera';
 		}
-		elseif (ereg('Mozilla/([0-9].[0-9]{1,2})', $http_user_agent, $regs)) {
+		elseif (preg_match("/^Mozilla\/([0-9].[0-9]{1,2})/", $http_user_agent, $regs)) {
 			$BROWSER_VERSION = $regs[1];
 			$BROWSER_AGENT = 'Mozilla';
 		}
@@ -163,17 +157,12 @@ function getBrowser($what) {
 
 	elseif ($what == "platform") {
 
-		if (	strstr($http_user_agent, 'BlackBerry') || 
-			strstr($http_user_agent, 'DoCoMo') || 
-			strstr($http_user_agent, 'Nokia') || 
-			strstr($http_user_agent, 'Palm') || 
-			strstr($http_user_agent, 'SonyEricsson') || 
-			strstr($http_user_agent, 'SymbianOS') || 
-			strstr($http_user_agent, 'Windows CE')) {
+		if (	stripos($http_user_agent,"iPod") 	||
+			stripos($http_user_agent,"iPhone") 	||
+			stripos($http_user_agent,"iPad") 	||
+			stripos($http_user_agent,"Android")	||
+			stripos($http_user_agent,"webOS")) {
 			$BROWSER_PLATFORM = 'Mobile';
-		}
-		elseif (strstr($http_user_agent, 'iPhone') || strstr($http_user_agent, 'iPod')) {
-			$BROWSER_PLATFORM = 'iPhone';
 		}
 		elseif (strstr($http_user_agent, 'Win')) {
 			$BROWSER_PLATFORM = 'Win';

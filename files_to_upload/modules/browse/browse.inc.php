@@ -2,7 +2,7 @@
 
 //   -------------------------------------------------------------------------------
 //  |                  net2ftp: a web based FTP client                              |
-//  |              Copyright (c) 2003-2013 by David Gartner                         |
+//  |              Copyright (c) 2003-2017 by David Gartner                         |
 //  |                                                                               |
 //  | This program is free software; you can redistribute it and/or                 |
 //  | modify it under the terms of the GNU General Public License                   |
@@ -29,19 +29,60 @@ function net2ftp_module_sendHttpHeaders() {
 
 	$cookie_expire = time()+60*60*24*30; // 30 days
 
-	setcookie("net2ftpcookie_ftpserver",     $net2ftp_globals["ftpserver"],     $cookie_expire);
-	setcookie("net2ftpcookie_ftpserverport", $net2ftp_globals["ftpserverport"], $cookie_expire);
-	setcookie("net2ftpcookie_username",      $net2ftp_globals["username"],      $cookie_expire);
-	setcookie("net2ftpcookie_language",      $net2ftp_globals["language"],      $cookie_expire);
-	setcookie("net2ftpcookie_skin",          $net2ftp_globals["skin"],          $cookie_expire);
-	setcookie("net2ftpcookie_ftpmode",       $net2ftp_globals["ftpmode"],       $cookie_expire);
-	setcookie("net2ftpcookie_passivemode",   $net2ftp_globals["passivemode"],   $cookie_expire);
-	setcookie("net2ftpcookie_protocol",      $net2ftp_globals["protocol"],      $cookie_expire);
-	setcookie("net2ftpcookie_viewmode",      $net2ftp_globals["viewmode"],      $cookie_expire);
-	setcookie("net2ftpcookie_sort",          $net2ftp_globals["sort"],          $cookie_expire);
-	setcookie("net2ftpcookie_sortorder",     $net2ftp_globals["sortorder"],     $cookie_expire);
-	setcookie("net2ftpcookie_directory",     $net2ftp_globals["directory"],     $cookie_expire);
-	
+// Consent cookies
+// Set by net2ftp login, login_small and browse modules, and removed by net2ftp clearcookies module
+	setcookie("net2ftpcookie_consent_necessary",           $net2ftp_globals["consent_necessary"],           $cookie_expire);
+	setcookie("net2ftpcookie_consent_preferences",         $net2ftp_globals["consent_preferences"],         $cookie_expire);
+	setcookie("net2ftpcookie_consent_statistics",          $net2ftp_globals["consent_statistics"],          $cookie_expire);
+	setcookie("net2ftpcookie_consent_personalized_ads",    $net2ftp_globals["consent_personalized_ads"],    $cookie_expire);
+	setcookie("net2ftpcookie_consent_nonpersonalized_ads", $net2ftp_globals["consent_nonpersonalized_ads"], $cookie_expire);
+
+
+// Necessary cookies
+// e.g. for Google Captcha
+
+// Preferences
+// Set by net2ftp browse module, and removed by net2ftp clearcookies module
+	setcookie("net2ftpcookie_skin",           $net2ftp_globals["skin"],           $cookie_expire);
+	setcookie("net2ftpcookie_language",       $net2ftp_globals["language"],       $cookie_expire);
+	setcookie("net2ftpcookie_protocol",       $net2ftp_globals["protocol"],       $cookie_expire);
+	setcookie("net2ftpcookie_ftpserver",      $net2ftp_globals["ftpserver"],      $cookie_expire);
+	if ($net2ftp_globals["protocol"] == "FTP") {
+		setcookie("net2ftpcookie_ftpserverport",      $net2ftp_globals["ftpserverport"], $cookie_expire);
+		setcookie("net2ftpcookie_ftpserverport_ftp",  $net2ftp_globals["ftpserverport"], $cookie_expire);
+	}
+	elseif ($net2ftp_globals["protocol"] == "FTP-SSH") {
+		setcookie("net2ftpcookie_ftpserverport",      $net2ftp_globals["ftpserverport"], $cookie_expire);
+		setcookie("net2ftpcookie_ftpserverport_ssh",  $net2ftp_globals["ftpserverport"], $cookie_expire);
+	}
+	elseif ($net2ftp_globals["protocol"] == "FTP-SSL") {
+		setcookie("net2ftpcookie_ftpserverport",      $net2ftp_globals["ftpserverport"], $cookie_expire);
+		setcookie("net2ftpcookie_ftpserverport_ssl",  $net2ftp_globals["ftpserverport"], $cookie_expire);
+	}	
+	setcookie("net2ftpcookie_username",       $net2ftp_globals["username"],       $cookie_expire);
+	setcookie("net2ftpcookie_directory",      $net2ftp_globals["directory"],      $cookie_expire);
+	setcookie("net2ftpcookie_sshfingerprint", $net2ftp_globals["sshfingerprint"], $cookie_expire);
+	setcookie("net2ftpcookie_ftpmode",        $net2ftp_globals["ftpmode"],        $cookie_expire);
+	setcookie("net2ftpcookie_passivemode",    $net2ftp_globals["passivemode"],    $cookie_expire);
+	setcookie("net2ftpcookie_viewmode",       $net2ftp_globals["viewmode"],       $cookie_expire);
+	setcookie("net2ftpcookie_sort",           $net2ftp_globals["sort"],           $cookie_expire);
+	setcookie("net2ftpcookie_sortorder",      $net2ftp_globals["sortorder"],      $cookie_expire);
+	setcookie("net2ftpcookie_user_email",     $net2ftp_globals["user_email"],     $cookie_expire);
+	for ($i=1; $i<=10; $i++) {
+		if (isset($net2ftp_globals["privacy" . $i])) {
+			setcookie("net2ftpcookie_privacy" . $i, $net2ftp_globals["privacy" . $i], $cookie_expire);
+		}
+	} // end for
+
+// Statistics
+// e.g. for Google Analytics
+
+// Personalized ads
+// e.g. for Google Adsense
+
+// Nonpersonalized ads
+// e.g. for Google Adsense
+
 } // end function net2ftp_sendHttpHeaders
 
 // **                                                                                  **
@@ -67,9 +108,22 @@ function net2ftp_module_printJavascript() {
 	global $net2ftp_settings, $net2ftp_globals;
 
 // -------------------------------------------------------------------------
+// Google adsense
+// -------------------------------------------------------------------------
+	if ($net2ftp_settings["show_ads"] == "yes" && $net2ftp_settings["ad_browse_header"] == "yes") {
+		echo "<script async src=\"https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js\"></script>\n";
+		echo "<script>\n";
+		echo "  (adsbygoogle = window.adsbygoogle || []).push({\n";
+		echo "    google_ad_client: \"ca-pub-5170524795218203\",\n";
+		echo "    enable_page_level_ads: true\n";
+		echo "  });\n";
+		echo "</script>\n";
+	}
+
+// -------------------------------------------------------------------------
 // Do not print anything for Mobile skins
 // -------------------------------------------------------------------------
-	if ($net2ftp_globals["skin"] == "mobile" || $net2ftp_globals["skin"] == "iphone") {
+	if ($net2ftp_globals["skin"] == "mobile" || $net2ftp_globals["skin"] == "phone") {
 		echo "<script type=\"text/javascript\" src=\"". $net2ftp_globals["application_rootdir_url"] . "/modules/browse/browse_main_mobile.js\"></script>\n";
 	}
 
@@ -77,6 +131,23 @@ function net2ftp_module_printJavascript() {
 // For the other skins, do print more Javascript functions
 // -------------------------------------------------------------------------
 	else {
+
+// ------------------------------------
+// Includes
+// ------------------------------------
+		if ($net2ftp_globals["state2"] == "main") {
+			echo "<script type=\"text/javascript\" src=\"". $net2ftp_globals["application_rootdir_url"] . "/modules/browse/browse_main.js\"></script>\n";
+		}
+
+		if ($net2ftp_globals["state2"] == "popup") {
+			echo "<script type=\"text/javascript\" src=\"". $net2ftp_globals["application_rootdir_url"] . "/modules/browse/browse_popup.js\"></script>\n";
+		}
+
+// Detect adblocker
+		if ($net2ftp_settings["show_ads"] == "yes") {
+			echo "<script type=\"text/javascript\" src=\"". $net2ftp_globals["application_rootdir_url"] . "/skins/ads/adblocker_detect.js\"></script>\n";
+		}
+
 // ------------------------------------
 // Code
 // ------------------------------------
@@ -104,16 +175,6 @@ function net2ftp_module_printJavascript() {
 		echo "	d.close();\n";
 		echo "} // end function createDirectoryTreeWindow\n";
 		echo "//--></script>\n";
-// ------------------------------------
-// Include
-// ------------------------------------
-		if ($net2ftp_globals["state2"] == "main") {
-			echo "<script type=\"text/javascript\" src=\"". $net2ftp_globals["application_rootdir_url"] . "/modules/browse/browse_main.js.php?skin=" . $net2ftp_globals["skin"] . "\"></script>\n";
-		}
-
-		if ($net2ftp_globals["state2"] == "popup") {
-			echo "<script type=\"text/javascript\" src=\"". $net2ftp_globals["application_rootdir_url"] . "/modules/browse/browse_popup.js\"></script>\n";
-		}
 
 	}
 
@@ -141,12 +202,12 @@ function net2ftp_module_printCss() {
 
 	global $net2ftp_settings, $net2ftp_globals;
 
-	echo "<link rel=\"stylesheet\" type=\"text/css\" href=\"". $net2ftp_globals["application_rootdir_url"] . "/skins/" . $net2ftp_globals["skin"] . "/css/main.css.php?ltr=" . __("ltr") . "&amp;image_url=" . urlEncode2($net2ftp_globals["image_url"]) . "\" />\n";
+//	echo "<link rel=\"stylesheet\" type=\"text/css\" href=\"". $net2ftp_globals["application_rootdir_url"] . "/skins/" . $net2ftp_globals["skin"] . "/css/main.css.php?ltr=" . __("ltr") . "&amp;image_url=" . urlEncode2($net2ftp_globals["image_url"]) . "\" />\n";
 
 // -------------------------------------------------------------------------
 // Do not print anything for Mobile skins
 // -------------------------------------------------------------------------
-	if ($net2ftp_globals["skin"] == "mobile" || $net2ftp_globals["skin"] == "iphone") {
+	if ($net2ftp_globals["skin"] == "mobile" || $net2ftp_globals["skin"] == "phone") {
 	}
 
 // -------------------------------------------------------------------------
@@ -228,7 +289,6 @@ function net2ftp_module_printBody() {
 // Open connection
 // ------------------------------------
 	if ($net2ftp_globals["state2"] == "main") { setStatus(2, 10, __("Connecting to the FTP server")); }
-
 	$conn_id = ftp_openconnection();
 	if ($net2ftp_result["success"] == false) { return false; }
 
@@ -237,7 +297,6 @@ function net2ftp_module_printBody() {
 // This function may change the current $directory; a warning message is returned in that case
 // ------------------------------------
 	if ($net2ftp_globals["state2"] == "main") { setStatus(4, 10, __("Getting the list of directories and files")); }
-
 	$list = ftp_getlist($conn_id, $net2ftp_globals["directory"]);
 	if ($net2ftp_result["success"] == false) { return false; }
 
@@ -421,8 +480,8 @@ function net2ftp_module_printBody() {
 // ------------------------------------
 // HTTP URL
 // ------------------------------------
-	$list_files_tmp[1]["dirfilename_url"] = "";
-	$httplink = ftp2http($directory, $list_files_tmp, "no");
+//	$list_files_tmp[1]["dirfilename_url"] = "";
+//	$httplink = ftp2http($directory, $list_files_tmp, "no");
 
 // -------------------------------------------------------------------------
 // Print the output - part 2

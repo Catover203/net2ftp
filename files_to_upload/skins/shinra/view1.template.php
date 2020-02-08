@@ -16,7 +16,6 @@
 	<img src="<?php echo $image_url; ?>" alt="<?php echo $image_alt; ?>" style="border: 1px solid black;" /><br /><br />
 	<?php echo __("To save the image, right-click on it and choose 'Save picture as...'"); ?>
 	</div>
-	<div style="text-align: center;"><?php require_once($net2ftp_globals["application_skinsdir"] . "/" . $net2ftp_globals["skin"] . "/google_view.template.php"); ?></div>
 <?php } // end elseif
 
 	/* ----- Flash ----- */

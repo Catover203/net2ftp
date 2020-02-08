@@ -2,7 +2,7 @@
 
 //   -------------------------------------------------------------------------------
 //  |                  net2ftp: a web based FTP client                              |
-//  |              Copyright (c) 2003-2013 by David Gartner                         |
+//  |              Copyright (c) 2003-2017 by David Gartner                         |
 //  |                                                                               |
 //  | This program is free software; you can redistribute it and/or                 |
 //  | modify it under the terms of the GNU General Public License                   |
@@ -130,7 +130,7 @@ function net2ftp_module_printCss() {
 	global $net2ftp_settings, $net2ftp_globals, $net2ftp_messages;
 
 // Include
-	echo "<link rel=\"stylesheet\" type=\"text/css\" href=\"". $net2ftp_globals["application_rootdir_url"] . "/skins/" . $net2ftp_globals["skin"] . "/css/main.css.php?ltr=" . __("ltr") . "&amp;image_url=" . urlEncode2($net2ftp_globals["image_url"]) . "\" />\n";
+//	echo "<link rel=\"stylesheet\" type=\"text/css\" href=\"". $net2ftp_globals["application_rootdir_url"] . "/skins/" . $net2ftp_globals["skin"] . "/css/main.css.php?ltr=" . __("ltr") . "&amp;image_url=" . urlEncode2($net2ftp_globals["image_url"]) . "\" />\n";
 	
 } // end net2ftp_printCssInclude
 
@@ -227,10 +227,16 @@ function net2ftp_module_printBody() {
 		$nextscreen = 2;
 
 // Protocol
-		$protocol["inputType"] = "hidden";
-		$protocol["list"][1] = "FTP";
-		if (function_exists("ssh2_connect") == true)    { $protocol["list"][2] = "FTP over SSH2"; $protocol["inputType"] = "select"; }
-		if (function_exists("ftp_ssl_connect") == true) { $protocol["list"][3] = "FTP with SSL";  $protocol["inputType"] = "select"; }
+		$protocol["inputType"] = "select"; 
+		$protocol["list"][1]["name"]     = "FTP";
+		$protocol["list"][1]["value"]    = "FTP";
+		$protocol["list"][1]["selected"] = "selected"; 
+		$protocol["list"][2]["name"]     = "FTP over SSH2";
+		$protocol["list"][2]["value"]    = "FTP-SSH";
+		$protocol["list"][2]["selected"] = ""; 
+		if (function_exists("ftp_ssl_connect") == true) { 
+			array_push($protocol["list"], array("name" => "FTP with SSL", "value" => "FTP-SSL" ,"selected" => ""));
+		}
 
 	} // end if
 
@@ -251,9 +257,9 @@ function net2ftp_module_printBody() {
 // Open connection to the target server, if it is different from the source server, or if the username
 // is different (different users may have different authorizations on the same FTP server)
 // ---------------------------------------
-		if (($net2ftp_globals["ftpserver2"] != "" || $net2ftp_globals["username2"] != "") &&
+		if (($net2ftp_globals["ftpserver2"] != "" && $net2ftp_globals["username2"] != "") &&
                 ($net2ftp_globals["ftpserver2"] != $net2ftp_globals["ftpserver"] || $net2ftp_globals["username2"] != $net2ftp_globals["username"])) {
-			$conn_id_target = ftp_openconnection2();       // Note: ftp_openconnection2 cleans the input values
+			$conn_id_target = ftp_openconnection(2);
 			if ($net2ftp_result["success"] == false) { return false; }
 		}
 		else { $conn_id_target = $conn_id_source; }

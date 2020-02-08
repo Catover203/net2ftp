@@ -2,7 +2,7 @@
 
 //   -------------------------------------------------------------------------------
 //  |                  net2ftp: a web based FTP client                              |
-//  |              Copyright (c) 2003-2013 by David Gartner                         |
+//  |              Copyright (c) 2003-2017 by David Gartner                         |
 //  |                                                                               |
 //  | This program is free software; you can redistribute it and/or                 |
 //  | modify it under the terms of the GNU General Public License                   |
@@ -50,14 +50,20 @@ function net2ftp_module_printJavascript() {
 // This function prints Javascript code and includes
 // --------------
 
-//	global $net2ftp_settings, $net2ftp_globals, $net2ftp_messages, $net2ftp_result;
+	global $net2ftp_settings, $net2ftp_globals;
 
-// Code
-//	echo "<script type=\"text/javascript\"><!--\n";	
-//	echo "//--></script>\n";
-
-// Include
-//	echo "<script type=\"text/javascript\" src=\"". $net2ftp_globals["application_rootdir_url"] . "/modules/login/login.js\"></script>\n";
+// -------------------------------------------------------------------------
+// Google adsense
+// -------------------------------------------------------------------------
+	if ($net2ftp_settings["show_ads"] == "yes") {
+		echo "<script async src=\"https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js\"></script>\n";
+		echo "<script>\n";
+		echo "  (adsbygoogle = window.adsbygoogle || []).push({\n";
+		echo "    google_ad_client: \"ca-pub-5170524795218203\",\n";
+		echo "    enable_page_level_ads: true\n";
+		echo "  });\n";
+		echo "</script>\n";
+	}
 
 } // end net2ftp_printJavascript
 
@@ -84,7 +90,7 @@ function net2ftp_module_printCss() {
 	global $net2ftp_settings, $net2ftp_globals;
 
 // Include
-	echo "<link rel=\"stylesheet\" type=\"text/css\" href=\"". $net2ftp_globals["application_rootdir_url"] . "/skins/" . $net2ftp_globals["skin"] . "/css/main.css.php?ltr=" . __("ltr") . "&amp;image_url=" . urlEncode2($net2ftp_globals["image_url"]) . "\" />\n";
+//	echo "<link rel=\"stylesheet\" type=\"text/css\" href=\"". $net2ftp_globals["application_rootdir_url"] . "/skins/" . $net2ftp_globals["skin"] . "/css/main.css.php?ltr=" . __("ltr") . "&amp;image_url=" . urlEncode2($net2ftp_globals["image_url"]) . "\" />\n";
 
 } // end net2ftp_printCssInclude
 

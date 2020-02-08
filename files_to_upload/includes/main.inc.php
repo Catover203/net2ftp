@@ -2,7 +2,7 @@
 
 //   -------------------------------------------------------------------------------
 //  |                  net2ftp: a web based FTP client                              |
-//  |              Copyright (c) 2003-2013 by David Gartner                         |
+//  |              Copyright (c) 2003-2017 by David Gartner                         |
 //  |                                                                               |
 //  | This program is free software; you can redistribute it and/or                 |
 //  | modify it under the terms of the GNU General Public License                   |
@@ -133,12 +133,13 @@ function net2ftp($action) {
 		else                                                    { error_reporting(E_ERROR | E_WARNING | E_PARSE); }
 	
 // Timer: start
-		$net2ftp_globals["starttime"] = microtime();
-		$net2ftp_globals["endtime"] = microtime();
+		$net2ftp_globals["starttime"] = microtime(true);
+		$net2ftp_globals["endtime"] = microtime(true);
 	}
 
 // Set default timezone
 	date_default_timezone_set("Europe/Paris");
+
 
 // Set the PHP temporary directory
 //	putenv("TMPDIR=" . $net2ftp_globals["application_tempdir"]);
@@ -150,7 +151,6 @@ function net2ftp($action) {
 // 3. Function libraries which are needed depending on certain variables 
 // // --> Do this only once, when $action == "sendHttpHeaders"
 // -------------------------------------------------------------------------
-
 	if ($action == "sendHttpHeaders") {
 
 // 1. Libraries which are always needed
@@ -160,8 +160,7 @@ function net2ftp($action) {
 		require_once($net2ftp_globals["application_includesdir"]  . "/errorhandling.inc.php");
 		require_once($net2ftp_globals["application_includesdir"]  . "/filesystem.inc.php");
 		require_once($net2ftp_globals["application_includesdir"]  . "/html.inc.php");
-		require_once($net2ftp_globals["application_includesdir"]  . "/StonePhpSafeCrypt.php");
-		require_once($net2ftp_globals["application_includesdir"] . "/logging.inc.php");
+		require_once($net2ftp_globals["application_includesdir"]  . "/logging.inc.php");
 		require_once($net2ftp_globals["application_languagesdir"] . "/languages.inc.php");
 		require_once($net2ftp_globals["application_skinsdir"]     . "/skins.inc.php");
 
@@ -193,6 +192,11 @@ function net2ftp($action) {
 		}
 
 // 4. Load the plugins
+		if ($net2ftp_globals["protocol"] == "FTP-SSH") { 
+			set_include_path($net2ftp_globals["application_pluginsdir"] . "/phpseclib");
+			require_once("Net/SFTP.php");
+			require_once("Net/SSH2.php");
+		}
 		require_once($net2ftp_globals["application_pluginsdir"] . "/plugins.inc.php");
 		$net2ftp_globals["activePlugins"] = getActivePlugins();
 		net2ftp_plugin_includePhpFiles();
@@ -210,7 +214,20 @@ function net2ftp($action) {
 	}
 
 // -------------------------------------------------------------------------
+// Check geoblock and authorizations
+// --> Do this only once, when $action == "sendHttpHeaders"
+// -------------------------------------------------------------------------
+	if ($action == "sendHttpHeaders" && $net2ftp_settings["check_authorization"] == "yes") {
+		checkAuthorization($net2ftp_globals["ftpserver"], $net2ftp_globals["ftpserverport"], $net2ftp_globals["directory"], $net2ftp_globals["username"]);
+		if ($net2ftp_result["success"] == false) { 
+			logError();
+			return false; 
+		}
+	}
+
+// -------------------------------------------------------------------------
 // Log access and rotate logs
+// Execute logAccess() only after checkAuthorization() because user country and FTP server country is determined in checkAuthorization()
 // --> Do this only once, when $action == "sendHttpHeaders"
 // -------------------------------------------------------------------------
 	if ($action == "sendHttpHeaders") {
@@ -221,18 +238,6 @@ function net2ftp($action) {
 		}
 
 		rotateLogs();
-		if ($net2ftp_result["success"] == false) { 
-			logError();
-			return false; 
-		}
-	}
-
-// -------------------------------------------------------------------------
-// Check authorizations
-// --> Do this only once, when $action == "sendHttpHeaders"
-// -------------------------------------------------------------------------
-	if ($action == "sendHttpHeaders" && $net2ftp_settings["check_authorization"] == "yes" && $net2ftp_globals["ftpserver"] != "") {
-		checkAuthorization($net2ftp_globals["ftpserver"], $net2ftp_globals["ftpserverport"], $net2ftp_globals["directory"], $net2ftp_globals["username"]);
 		if ($net2ftp_result["success"] == false) { 
 			logError();
 			return false; 
@@ -261,6 +266,7 @@ function net2ftp($action) {
 // ------------------------------------
 // For most modules, everything must be done: send headers, print body, etc
 // ------------------------------------
+// For new modules, add the new state here below and also in registerglobals.inc.php in function validateState()
 	if ($net2ftp_globals["state"] == "admin" || 
           $net2ftp_globals["state"] == "admin_createtables" || 
           $net2ftp_globals["state"] == "admin_emptylogs" || 
@@ -273,10 +279,12 @@ function net2ftp($action) {
           $net2ftp_globals["state"] == "browse" || 
           $net2ftp_globals["state"] == "calculatesize" ||
           $net2ftp_globals["state"] == "chmod" || 
+          $net2ftp_globals["state"] == "consent" || 
           $net2ftp_globals["state"] == "copymovedelete" || 
           $net2ftp_globals["state"] == "edit" || 
           $net2ftp_globals["state"] == "findstring" || 
           $net2ftp_globals["state"] == "getcookies" || 
+          $net2ftp_globals["state"] == "homepage" || 
           $net2ftp_globals["state"] == "install" || 
           ($net2ftp_globals["state"] == "jupload" && $net2ftp_globals["screen"] == 1) || 
           $net2ftp_globals["state"] == "login" || 
@@ -285,6 +293,7 @@ function net2ftp($action) {
           $net2ftp_globals["state"] == "newdir" || 
           $net2ftp_globals["state"] == "raw" ||  
           $net2ftp_globals["state"] == "rename" ||  
+          $net2ftp_globals["state"] == "serverfingerprint" ||  
           $net2ftp_globals["state"] == "unzip" || 
           $net2ftp_globals["state"] == "upload" || 
           ($net2ftp_globals["state"] == "view" && $net2ftp_globals["state2"] == "") || 
@@ -293,6 +302,8 @@ function net2ftp($action) {
 		require_once($net2ftp_globals["application_modulesdir"] . "/" . $net2ftp_globals["state"] . "/" . $net2ftp_globals["state"] . ".inc.php");
 
 		if     ($action == "sendHttpHeaders") { 
+			// Send charset explicitly, otherwise PHP sends UTF-8 (since PHP 5.6)
+			header("Content-Type: text/html; charset=" . __("iso-8859-1"));
 			net2ftp_module_sendHttpHeaders(); 
 
 			// If needed, exit to avoid sending non-header output (by net2ftp or other application)
@@ -325,7 +336,7 @@ function net2ftp($action) {
 			net2ftp_module_printBody();
 
 			// Update the consumption statistics
-			$net2ftp_globals["endtime"] = microtime();
+			$net2ftp_globals["endtime"] = microtime(true);
 			$net2ftp_globals["time_taken"] = timer();
 			addConsumption(0, $net2ftp_globals["time_taken"]);
 			putConsumption();
@@ -345,6 +356,7 @@ function net2ftp($action) {
               $net2ftp_globals["state"] == "downloadfile"  || 
               $net2ftp_globals["state"] == "downloadzip"   ||
               $net2ftp_globals["state"] == "followsymlink" ||
+              $net2ftp_globals["state"] == "gotopartner" ||
              ($net2ftp_globals["state"] == "jupload" && $net2ftp_globals["screen"] == 2) || 
              ($net2ftp_globals["state"] == "view" && $net2ftp_globals["state2"] != "")) {
 		require_once($net2ftp_globals["application_modulesdir"] . "/" . $net2ftp_globals["state"] . "/" . $net2ftp_globals["state"] . ".inc.php");
@@ -354,7 +366,7 @@ function net2ftp($action) {
 			net2ftp_module_sendHttpHeaders();
 
 			// Update the consumption statistics
-			$net2ftp_globals["endtime"] = microtime();
+			$net2ftp_globals["endtime"] = microtime(true);
 			$net2ftp_globals["time_taken"] = timer();
 			addConsumption(0, $net2ftp_globals["time_taken"]);
 			putConsumption();
@@ -474,7 +486,7 @@ function stopwatch() {
 	global $net2ftp_globals;
 
 // Now
-	list($now_usec, $now_sec) = explode(' ', microtime());
+	list($now_usec, $now_sec) = explode(' ', microtime(true));
 	$now = ((float)$now_usec + (float)$now_sec);
 
 // Initialization

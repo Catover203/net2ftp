@@ -2,7 +2,7 @@
 
 //   -------------------------------------------------------------------------------
 //  |                  net2ftp: a web based FTP client                              |
-//  |              Copyright (c) 2003-2013 by David Gartner                         |
+//  |              Copyright (c) 2003-2017 by David Gartner                         |
 //  |                                                                               |
 //  | This program is free software; you can redistribute it and/or                 |
 //  | modify it under the terms of the GNU General Public License                   |
@@ -102,7 +102,6 @@ function getConsumption() {
 // -------------------------------------------------------------------------
 // Set the change flags to the initial value
 // -------------------------------------------------------------------------
-	$net2ftp_globals["consumption_datatransfer_changeflag"] = 0;
 	$net2ftp_globals["consumption_database_updated"] = 0;
 
 // -------------------------------------------------------------------------
@@ -113,22 +112,21 @@ function getConsumption() {
 // -------------------------------------------------------------------------
 // Connect
 // -------------------------------------------------------------------------
-	$mydb = connect2db();
+	net2ftp_connect_db();
 	if ($net2ftp_result["success"] == false) { return false; }
 
 // -------------------------------------------------------------------------
 // Get consumed data volume and execution time by the current IP address
 // -------------------------------------------------------------------------
-	$sqlquery1 = "SELECT datatransfer, executiontime FROM net2ftp_log_consumption_ipaddress WHERE date = '$date' AND ipaddress = '$REMOTE_ADDR_safe';";
-	$result1   = mysql_query("$sqlquery1") or die("Unable to execute SQL SELECT query (getConsumption > sqlquery1) <br /> $sqlquery1");
-	$nrofrows1 = mysql_num_rows($result1);
-
+	$sqlquery1 = "SELECT datatransfer, executiontime FROM net2ftp_log_consumption_ipaddress WHERE date = '$date' AND user_ipaddress = '$REMOTE_ADDR_safe';";
+	$result1   = mysqli_query($net2ftp_globals["mysqli_link"], "$sqlquery1");
+	$nrofrows1 = @mysqli_num_rows($result1);
 	if     ($nrofrows1 == 0) { 
 		$net2ftp_globals["consumption_ipaddress_datatransfer"] = 0;
 		$net2ftp_globals["consumption_ipaddress_executiontime"] = 0; 
 	}
 	elseif ($nrofrows1 == 1) { 
-		$resultRow1 = mysql_fetch_row($result1); 
+		$resultRow1 = mysqli_fetch_row($result1); 
 		$net2ftp_globals["consumption_ipaddress_datatransfer"] = $resultRow1[0];
 		$net2ftp_globals["consumption_ipaddress_executiontime"] = $resultRow1[1]; 
 	}
@@ -141,15 +139,14 @@ function getConsumption() {
 // Get consumed data volume and execution time to the current FTP server
 // -------------------------------------------------------------------------
 	$sqlquery2 = "SELECT datatransfer, executiontime FROM net2ftp_log_consumption_ftpserver WHERE date = '$date' AND ftpserver = '$net2ftp_ftpserver_safe';";
-	$result2   = mysql_query("$sqlquery2") or die("Unable to execute SQL SELECT query (getConsumption > sqlquery2) <br /> $sqlquery2");
-	$nrofrows2 = mysql_num_rows($result2);
-
+	$result2   = mysqli_query($net2ftp_globals["mysqli_link"], "$sqlquery2") or die("Unable to execute SQL SELECT query (getConsumption > sqlquery2) <br /> $sqlquery2");
+	$nrofrows2 = @mysqli_num_rows($result2);
 	if     ($nrofrows2 == 0) { 
 		$net2ftp_globals["consumption_ftpserver_datatransfer"] = 0;
 		$net2ftp_globals["consumption_ftpserver_executiontime"] = 0; 
 	}
 	elseif ($nrofrows2 == 1) { 
-		$resultRow2 = mysql_fetch_row($result2); 
+		$resultRow2 = mysqli_fetch_row($result2); 
 		$net2ftp_globals["consumption_ftpserver_datatransfer"] = $resultRow2[0];
 		$net2ftp_globals["consumption_ftpserver_executiontime"] = $resultRow2[1]; 
 	}
@@ -238,7 +235,7 @@ function putConsumption() {
 // -------------------------------------------------------------------------
 // Connect
 // -------------------------------------------------------------------------
-	$mydb = connect2db();
+	net2ftp_connect_db();
 	if ($net2ftp_result["success"] == false) { return false; }
 
 // -------------------------------------------------------------------------
@@ -250,14 +247,13 @@ function putConsumption() {
 // -------------------------------------------------------------------------
 // Put consumed data volume and execution time by the current IP address
 // -------------------------------------------------------------------------
-	$sqlquery1 = "SELECT * FROM net2ftp_log_consumption_ipaddress WHERE date = '$date' AND ipaddress = '$REMOTE_ADDR_safe';";
-	$result1   = mysql_query("$sqlquery1");
-	$nrofrows1 = mysql_num_rows($result1);
-
+	$sqlquery1 = "SELECT * FROM net2ftp_log_consumption_ipaddress WHERE date = '$date' AND user_ipaddress = '$REMOTE_ADDR_safe';";
+	$result1   = mysqli_query($net2ftp_globals["mysqli_link"], "$sqlquery1");
+	$nrofrows1 = @mysqli_num_rows($result1);
 	if ($nrofrows1 == 1) { 
-		$sqlquery2 = "UPDATE net2ftp_log_consumption_ipaddress SET datatransfer = '" . $net2ftp_globals["consumption_ipaddress_datatransfer"] . "', executiontime = '" . round($net2ftp_globals["consumption_ipaddress_executiontime"]) . "' WHERE date = '$date' AND ipaddress = '$REMOTE_ADDR_safe';";
-		$result2   = mysql_query("$sqlquery2");
-		$nrofrows2 = mysql_affected_rows($mydb);
+		$sqlquery2 = "UPDATE net2ftp_log_consumption_ipaddress SET datatransfer = '" . $net2ftp_globals["consumption_ipaddress_datatransfer"] . "', executiontime = '" . round($net2ftp_globals["consumption_ipaddress_executiontime"]) . "' WHERE date = '$date' AND user_ipaddress = '$REMOTE_ADDR_safe';";
+		$result2   = mysqli_query($net2ftp_globals["mysqli_link"], "$sqlquery2");
+		$nrofrows2 = mysqli_affected_rows($net2ftp_globals["mysqli_link"]);
 // Don't check on the UPDATE nr of rows, because when the values in the variables and in the table are the same,
 // the $nrofrows2 is set to 0. (This happens on the Browse screen, when the loading is fast: the datatransfer is 0
 // and the executiontime is the same as in the table.)
@@ -268,8 +264,8 @@ function putConsumption() {
 	}
 	elseif ($nrofrows1 == 0) { 
 		$sqlquery3 = "INSERT INTO net2ftp_log_consumption_ipaddress VALUES('$date', '$REMOTE_ADDR_safe', '" . $net2ftp_globals["consumption_ipaddress_datatransfer"] . "', '" . round($net2ftp_globals["consumption_ipaddress_executiontime"]) . "');";
-		$result3   = mysql_query("$sqlquery3");
-		$nrofrows3 = mysql_affected_rows($mydb);
+		$result3   = mysqli_query($net2ftp_globals["mysqli_link"], "$sqlquery3");
+		$nrofrows3 = mysqli_affected_rows($net2ftp_globals["mysqli_link"]);
 		if ($nrofrows3 != 1) { 
 			setErrorVars(false, __("Table net2ftp_log_consumption_ipaddress could not be updated."), debug_backtrace(), __FILE__, __LINE__);
 			return false; 
@@ -288,13 +284,13 @@ function putConsumption() {
 // Put consumed data volume and execution time to the current FTP server
 // -------------------------------------------------------------------------
 	$sqlquery4 = "SELECT * FROM net2ftp_log_consumption_ftpserver WHERE date = '$date' AND ftpserver = '$net2ftp_ftpserver_safe';";
-	$result4   = mysql_query("$sqlquery4");
-	$nrofrows4 = mysql_num_rows($result4);
+	$result4   = mysqli_query($net2ftp_globals["mysqli_link"], "$sqlquery4");
+	$nrofrows4 = @mysqli_num_rows($result4);
 
 	if ($nrofrows4 == 1) { 
 		$sqlquery5 = "UPDATE net2ftp_log_consumption_ftpserver SET datatransfer = '" . $net2ftp_globals["consumption_ftpserver_datatransfer"] . "', executiontime = '" . round($net2ftp_globals["consumption_ftpserver_executiontime"]) . "' WHERE date = '$date' AND ftpserver = '$net2ftp_ftpserver_safe';";
-		$result5   = mysql_query("$sqlquery5");
-		$nrofrows5 = mysql_affected_rows($mydb);
+		$result5   = mysqli_query($net2ftp_globals["mysqli_link"], "$sqlquery5");
+		$nrofrows5 = mysqli_affected_rows($net2ftp_globals["mysqli_link"]);
 // Don't check on the UPDATE nr of rows, because when the values in the variables and in the table are the same,
 // the $nrofrows2 is set to 0. (This happens on the Browse screen, when the loading is fast: the datatransfer is 0
 // and the executiontime is the same as in the table.)
@@ -305,8 +301,8 @@ function putConsumption() {
 	}
 	elseif ($nrofrows4 == 0) { 
 		$sqlquery6 = "INSERT INTO net2ftp_log_consumption_ftpserver VALUES('$date', '$net2ftp_ftpserver_safe', '" . $net2ftp_globals["consumption_ftpserver_datatransfer"] . "', '" . round($net2ftp_globals["consumption_ftpserver_executiontime"]) . "');";
-		$result6   = mysql_query("$sqlquery6");
-		$nrofrows6 = mysql_affected_rows($mydb);
+		$result6   = mysqli_query($net2ftp_globals["mysqli_link"], "$sqlquery6");
+		$nrofrows6 = mysqli_affected_rows($net2ftp_globals["mysqli_link"]);
 		if ($nrofrows6 != 1) { 
 			setErrorVars(false, __("Table net2ftp_log_consumption_ftpserver could not be updated."), debug_backtrace(), __FILE__, __LINE__);
 			return false; 
@@ -321,13 +317,13 @@ function putConsumption() {
 // Update the net2ftp_log_access record with the consumed data volume and execution time
 // -------------------------------------------------------------------------
 	$sqlquery7 = "SELECT * FROM net2ftp_log_access WHERE id = '" . $net2ftp_globals["log_access_id"] . "';";
-	$result7   = mysql_query("$sqlquery7");
-	$nrofrows7 = mysql_num_rows($result7);
+	$result7   = mysqli_query($net2ftp_globals["mysqli_link"], "$sqlquery7");
+	$nrofrows7 = @mysqli_num_rows($result7);
 
 	if ($nrofrows7 == 1) { 
 		$sqlquery8 = "UPDATE net2ftp_log_access SET datatransfer = '" . $net2ftp_globals["consumption_datatransfer"] . "', executiontime = '" . round($net2ftp_globals["consumption_executiontime"]) . "' WHERE id = '" . $net2ftp_globals["log_access_id"] . "'";
-		$result8   = mysql_query("$sqlquery8");
-		$nrofrows8 = mysql_affected_rows($mydb);
+		$result8   = mysqli_query($net2ftp_globals["mysqli_link"], "$sqlquery8");
+		$nrofrows8 = mysqli_affected_rows($net2ftp_globals["mysqli_link"]);
 // Don't check on the UPDATE nr of rows, because when the values in the variables and in the table are the same,
 // the $nrofrows2 is set to 0. (This happens on the Browse screen, when the loading is fast: the datatransfer is 0
 // and the executiontime is the same as in the table.)
@@ -336,15 +332,16 @@ function putConsumption() {
 //			return false; 
 //		}
 	}
-	elseif ($nrofrows7 == 0) { 
-		$sqlquery9 = "INSERT INTO net2ftp_log_access VALUES('$date', '$REMOTE_ADDR_safe', '" . $net2ftp_globals["consumption_ipaddress_datatransfer"] . "', '" . round($net2ftp_globals["consumption_ipaddress_executiontime"]) . "');";
-		$result9   = mysql_query("$sqlquery9");
-		$nrofrows9 = mysql_affected_rows($mydb);
-		if ($nrofrows9 != 1) { 
-			setErrorVars(false, __("Table net2ftp_log_access could not be updated."), debug_backtrace(), __FILE__, __LINE__);
-			return false; 
-		}
-	}
+// This insert is incomplete and was probably never triggered
+//	elseif ($nrofrows7 == 0) { 
+//		$sqlquery9 = "INSERT INTO net2ftp_log_access VALUES('$date', '$REMOTE_ADDR_safe', '" . $net2ftp_globals["consumption_ipaddress_datatransfer"] . "', '" . round($net2ftp_globals["consumption_ipaddress_executiontime"]) . "');";
+//		$result9   = mysqli_query($net2ftp_globals["mysqli_link"], "$sqlquery9");
+//		$nrofrows9 = mysqli_affected_rows($net2ftp_globals["mysqli_link"]);
+//		if ($nrofrows9 != 1) { 
+//			setErrorVars(false, __("Table net2ftp_log_access could not be updated."), debug_backtrace(), __FILE__, __LINE__);
+//			return false; 
+//		}
+//	}
 	else {
 		setErrorVars(false, __("Table net2ftp_log_access contains duplicate entries."), debug_backtrace(), __FILE__, __LINE__);
 		return false; 
@@ -407,12 +404,10 @@ function addConsumption($data, $time) {
 // Add the consumption to the global variables
 // -------------------------------------------------------------------------
 	if ($data != "" && $data > 0) {
-		$net2ftp_globals["consumption_datatransfer_changeflag"] = 1;
 		$net2ftp_globals["consumption_datatransfer"] = $net2ftp_globals["consumption_datatransfer"] + $data;
 		$net2ftp_globals["consumption_ipaddress_datatransfer"] = $net2ftp_globals["consumption_ipaddress_datatransfer"] + $data;
 		$net2ftp_globals["consumption_ftpserver_datatransfer"] = $net2ftp_globals["consumption_ftpserver_datatransfer"] + $data;
 	}
-
 	if ($time != "" && $time > 0) {
 		$net2ftp_globals["consumption_executiontime"] = $net2ftp_globals["consumption_executiontime"] + $time;
 		$net2ftp_globals["consumption_ipaddress_executiontime"] = $net2ftp_globals["consumption_ipaddress_executiontime"] + $time;
@@ -466,10 +461,6 @@ function printConsumption() {
 
 	echo "consumption_ftpserver_datatransfer: "     . $net2ftp_globals["consumption_ftpserver_datatransfer"]  . "<br />\n";
 	echo "consumption_ftpserver_executiontime: "    . $net2ftp_globals["consumption_ftpserver_executiontime"] . "<br />\n";
-
-	echo "consumption_datatransfer_changeflag: "    . $net2ftp_globals["consumption_datatransfer_changeflag"] . "<br />\n";
-	echo "consumption_ipaddress_executiontime: "    . $net2ftp_globals["consumption_ipaddress_executiontime"] . "<br />\n";
-
 
 } // End printConsumption() 
 

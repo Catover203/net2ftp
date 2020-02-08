@@ -2,7 +2,7 @@
 
 //   -------------------------------------------------------------------------------
 //  |                  net2ftp: a web based FTP client                              |
-//  |              Copyright (c) 2003-2013 by David Gartner                         |
+//  |              Copyright (c) 2003-2017 by David Gartner                         |
 //  |                                                                               |
 //  | This program is free software; you can redistribute it and/or                 |
 //  | modify it under the terms of the GNU General Public License                   |
@@ -19,59 +19,128 @@
 // **                                                                                  **
 // **                                                                                  **
 
-function ftp_openconnection() {
+function ftp_openconnection($connection_number = 1) {
 
 // --------------
 // This function opens an ftp connection
 // --------------
 
 // Global variables
-	global $net2ftp_globals;
+	global $net2ftp_globals, $net2ftp_result;
+
+// Open the first (main) or second connection
+	if ($connection_number == 1) {
+		$protocol         = $net2ftp_globals["protocol"];
+		$ftpserver        = $net2ftp_globals["ftpserver"];
+		$ftpserverport    = $net2ftp_globals["ftpserverport"];
+		$sshfingerprint   = $net2ftp_globals["sshfingerprint"];
+		$username         = $net2ftp_globals["username"];
+		$passivemode      = $net2ftp_globals["passivemode"];
+		$password 		= decryptPassword($net2ftp_globals["password_encrypted"]);
+	}
+	else {
+		$protocol         = $net2ftp_globals["protocol2"];
+		$ftpserver        = $net2ftp_globals["ftpserver2"];
+		$ftpserverport    = $net2ftp_globals["ftpserverport2"];
+		$sshfingerprint   = $net2ftp_globals["sshfingerprint2"];
+		$username         = $net2ftp_globals["username2"];
+		$passivemode      = $net2ftp_globals["passivemode2"];
+		$password         = decryptPassword($net2ftp_globals["password_encrypted2"]);
+	}
 
 // Check if the FTP module of PHP is installed
-	if (function_exists("ftp_connect") == false) { 
-		$errormessage = __("The <a href=\"http://www.php.net/manual/en/ref.ftp.php\" target=\"_blank\">FTP module of PHP</a> is not installed.<br /><br /> The administrator of this website should install this FTP module. Installation instructions are given on <a href=\"http://www.php.net/manual/en/ref.ftp.php\" target=\"_blank\">php.net</a><br />");
+	if ($protocol == "FTP" && function_exists("ftp_connect") == false) { 
+		$errormessage = __("The <a href=\"http://www.php.net/manual/en/ref.ftp.php\" target=\"_blank\">FTP module of PHP</a> is not installed.<br /><br /> The administrator of this website should install this FTP module. Installation instructions are given on <a href=\"http://www.php.net/manual/en/ref.ftp.php\" target=\"_blank\">php.net</a>.<br />");
 		setErrorVars(false, $errormessage, debug_backtrace(), __FILE__, __LINE__);
 		return false;
 	}
 
-// Decrypt password
-	if (isset($_SESSION["net2ftp_password_encrypted_" . $net2ftp_globals["ftpserver"] . $net2ftp_globals["username"]]) == true) { 
-		$net2ftp_password = decryptPassword($_SESSION["net2ftp_password_encrypted_" . $net2ftp_globals["ftpserver"] . $net2ftp_globals["username"]]); 
-	}
-	else { 
-		$net2ftp_password = decryptPassword($net2ftp_globals["password_encrypted"]); 
+// Check if the FTP module of PHP and OpenSSL are installed
+	if ($protocol == "FTP-SSL" && function_exists("ftp_ssl_connect") == false) { 
+		$errormessage = __("The FTP module of PHP and/or OpenSSL are not installed.<br /><br /> The administrator of this website should install these. Installation instructions are given on php.net: <a href=\"http://www.php.net/manual/en/ref.ftp.php\" target=\"_blank\">FTP module installation</a> and <a href=\"http://php.net/manual/en/openssl.installation.php\">OpenSSL installation</a>.<br />");
+		setErrorVars(false, $errormessage, debug_backtrace(), __FILE__, __LINE__);
+		return false;
 	}
 
 // Check if port nr is filled in
-	if ($net2ftp_globals["ftpserverport"] < 1 || $net2ftp_globals["ftpserverport"] > 65535 || $net2ftp_globals["ftpserverport"] == "") { $net2ftp_globals["ftpserverport"] = 21; }
+	if ($ftpserverport  < 1 || $ftpserverport  > 65535 || $ftpserverport  == "") { 
+		if ($protocol == "FTP-SSH") { $ftpserverport  = 22; }
+		else                        { $ftpserverport  = 21; }
+	}
 
 // Set up basic connection
-	$ftp_connect = "ftp_connect";
-	if ($net2ftp_globals["sslconnect"] == "yes" && function_exists("ftp_ssl_connect")) { $ftp_connect = "ftp_ssl_connect"; }
+	if ($protocol == "FTP") {
+		$conn_id = ftp_connect($ftpserver, $ftpserverport, 10);
+		if ($conn_id == false) {
+			$errormessage = __("Unable to connect to FTP server <b>%1\$s</b> on port <b>%2\$s</b>.<br /><br />Are you sure this is the address of the FTP server? This is often different from that of the HTTP (web) server. Please contact your ISP helpdesk or system administrator for help.<br />", $ftpserver, $ftpserverport ); 
+			setErrorVars(false, $errormessage, debug_backtrace(), __FILE__, __LINE__);
+			return false;
+		}
+	}
+	elseif ($protocol == "FTP-SSL") {
+		$conn_id = ftp_ssl_connect($ftpserver, $ftpserverport, 10);
+		if ($conn_id == false) {
+			$errormessage = __("Unable to connect to FTP server <b>%1\$s</b> on port <b>%2\$s</b>.<br /><br />Are you sure this is the address of the FTP server? This is often different from that of the HTTP (web) server. Please contact your ISP helpdesk or system administrator for help.<br />", $ftpserver, $ftpserverport ); 
+			setErrorVars(false, $errormessage, debug_backtrace(), __FILE__, __LINE__);
+			return false;
+		}
+	}
+	elseif ($protocol == "FTP-SSH") {
+		$conn_id = new Net_SFTP($ftpserver, $ftpserverport);
+		$conn_id->_connect();
+		if ($net2ftp_result["success"] == false) { 
+			// Get the short error message from the _connect() function and add more text to it to explain the context to the user
+			$net2ftp_result["errormessage"] = __("Unable to connect to SSH server <b>%1\$s</b> on port <b>%2\$s</b> (%3\$s).<br /><br />Are you sure this is the address of the FTP server? This is often different from that of the HTTP (web) server. Please contact your ISP helpdesk or system administrator for help.<br />", $ftpserver, $ftpserverport , $net2ftp_result["errormessage"]);
+			return false; 
+		}
+	}
 
-	$conn_id = $ftp_connect($net2ftp_globals["ftpserver"], $net2ftp_globals["ftpserverport"]);
-	if ($conn_id == false) {
-		$errormessage = __("Unable to connect to FTP server <b>%1\$s</b> on port <b>%2\$s</b>.<br /><br />Are you sure this is the address of the FTP server? This is often different from that of the HTTP (web) server. Please contact your ISP helpdesk or system administrator for help.<br />", $net2ftp_globals["ftpserver"], $net2ftp_globals["ftpserverport"]); 
-		setErrorVars(false, $errormessage, debug_backtrace(), __FILE__, __LINE__);
-		return false;
+// For SSH, check the server's public key fingerprint before logging in
+	if ($protocol == "FTP-SSH") {
+		// Get fingerprint of current connection
+		$sshfingerprint_current = ftp_getsshfingerprint($connection_number);
+		if ($net2ftp_result["success"] == false) { return false; }
+		// If a previous fingerprint is available, check if the current fingerprint is equal to the previous fingerprint
+		if ($sshfingerprint != "" && $sshfingerprint_current != $sshfingerprint) {
+			$errormessage = __("The SSH server's fingerprint does not match the fingerprint which was validated previously.<br /><br />Current fingerprint: %1\$s <br />Fingerprint validated previously: %2\$s <br /><br />", $sshfingerprint_current, $sshfingerprint); 
+			setErrorVars(false, $errormessage, debug_backtrace(), __FILE__, __LINE__);
+			return false;
+		}
+		// If no previous fingerprint is available, save the current fingerprint
+		if ($sshfingerprint == "") {
+			if ($connection_number == 1) { $net2ftp_globals["sshfingerprint"]  = $sshfingerprint_current; }
+			else                         { $net2ftp_globals["sshfingerprint2"] = $sshfingerprint_current; }
+		}
 	}
 
 // Login with username and password
-	$login_result = ftp_login($conn_id, $net2ftp_globals["username"], $net2ftp_password);
-	if ($login_result == false) { 
-		$errormessage = __("Unable to login to FTP server <b>%1\$s</b> with username <b>%2\$s</b>.<br /><br />Are you sure your username and password are correct? Please contact your ISP helpdesk or system administrator for help.<br />", $net2ftp_globals["ftpserver"], $net2ftp_globals["username"]);
-		setErrorVars(false, $errormessage, debug_backtrace(), __FILE__, __LINE__);
-		return false;
-	}
-
-// Set passive mode
-	if ($net2ftp_globals["passivemode"] == "yes") { 
-		$success = ftp_pasv($conn_id, TRUE); 
-		if ($success == false) { 
-			$errormessage = __("Unable to switch to the passive mode on FTP server <b>%1\$s</b>.", $net2ftp_globals["ftpserver"]);
+	if ($protocol == "FTP" || $protocol == "FTP-SSL") {
+		$login_result = ftp_login($conn_id, $username, $password);
+		if ($login_result == false) { 
+			$errormessage = __("Unable to login to FTP server <b>%1\$s</b> with username <b>%2\$s</b>.<br /><br />Are you sure your username and password are correct? Please contact your ISP helpdesk or system administrator for help.<br />", $ftpserver, $username);
 			setErrorVars(false, $errormessage, debug_backtrace(), __FILE__, __LINE__);
 			return false;
+		}
+	}
+	elseif ($protocol == "FTP-SSH") {
+		$conn_id->login($username, $password);
+		if ($net2ftp_result["success"] == false) { 
+			// Get the short error message from the login() function and add more text to it to explain the context to the user
+			$net2ftp_result["errormessage"] = __("Unable to login to SSH server <b>%1\$s</b> with username <b>%2\$s</b> (%3\$s).<br /><br />Are you sure your username and password are correct? Please contact your ISP helpdesk or system administrator for help.<br />", $ftpserver, $username, $net2ftp_result["errormessage"]);
+			return false; 
+		}
+	}
+
+
+// Set passive mode
+	if ($passivemode == "yes") { 
+		if ($protocol == "FTP" || $protocol == "FTP-SSL") {
+			$success = ftp_pasv($conn_id, TRUE); 
+			if ($success == false) { 
+				$errormessage = __("Unable to switch to the passive mode on FTP server <b>%1\$s</b>.", $ftpserver);
+				setErrorVars(false, $errormessage, debug_backtrace(), __FILE__, __LINE__);
+				return false;
+			}
 		}
 	}
 
@@ -97,83 +166,83 @@ function ftp_openconnection() {
 // **                                                                                  **
 // **                                                                                  **
 
-function ftp_openconnection2() {
-
-// --------------
-// This function opens an ftp connection to the secondary FTP server, to which
-// files can be copied or moved.
-// --------------
-
-// Global variables
-	global $net2ftp_globals;
-
-// Check if the FTP module of PHP is installed
-	if (function_exists("ftp_connect") == false) { 
-		$errormessage = __("The <a href=\"http://www.php.net/manual/en/ref.ftp.php\" target=\"_blank\">FTP module of PHP</a> is not installed.<br /><br /> The administrator of this website should install this FTP module. Installation instructions are given on <a href=\"http://www.php.net/manual/en/ref.ftp.php\" target=\"_blank\">php.net</a><br />");
-		setErrorVars(false, $errormessage, debug_backtrace(), __FILE__, __LINE__);
-		return false;
-	}
-
-// Check if port nr is correct
-	if ($net2ftp_globals["ftpserverport2"] < 1 || $net2ftp_globals["ftpserverport2"] > 65535 || $net2ftp_globals["ftpserverport2"] == "") { $net2ftp_globals["ftpserverport2"] = 21; }
-
-// Set up basic connection
-	$conn_id = ftp_connect($net2ftp_globals["ftpserver2"], $net2ftp_globals["ftpserverport2"]);
-	if ($conn_id == false) { 
-		$errormessage = __("Unable to connect to the second (target) FTP server <b>%1\$s</b> on port <b>%2\$s</b>.<br /><br />Are you sure this is the address of the second (target) FTP server? This is often different from that of the HTTP (web) server. Please contact your ISP helpdesk or system administrator for help.<br />", $net2ftp_globals["ftpserver2"], $net2ftp_globals["ftpserverport2"]);
-		setErrorVars(false, $errormessage, debug_backtrace(), __FILE__, __LINE__);
-		return false;
-	}
-
-// Login with username and password
-	$login_result = ftp_login($conn_id, $net2ftp_globals["username2"], $net2ftp_globals["password2"]);
-	if ($login_result == false) { 
-		$errormessage = __("Unable to login to the second (target) FTP server <b>%1\$s</b> with username <b>%2\$s</b>.<br /><br />Are you sure your username and password are correct? Please contact your ISP helpdesk or system administrator for help.<br />", $net2ftp_globals["ftpserver2"], $net2ftp_globals["username2"]);
-		setErrorVars(false, $errormessage, debug_backtrace(), __FILE__, __LINE__);
-		return false;
-	}
-
-// Set passive mode
-	if ($net2ftp_globals["passivemode"] == "yes") { 
-		$success = ftp_pasv($conn_id, TRUE); 
-		if ($success == false) { 
-			$errormessage = __("Unable to switch to the passive mode on the second (target) FTP server <b>%1\$s</b>.", $net2ftp_globals["ftpserver2"]); 
-			setErrorVars(false, $errormessage, debug_backtrace(), __FILE__, __LINE__);
-			return false;
-		}
-	}
-
-// Get the system type
-//	$net2ftp_globals["systype2"] = ftp_systype($conn_id);
-
-// Return the connection ID
-	return $conn_id;
-
-} // End function ftp_openconnection2
-
-// **                                                                                  **
-// **                                                                                  **
-// **************************************************************************************
-// **************************************************************************************
-
-
-
-
-
-// **************************************************************************************
-// **************************************************************************************
-// **                                                                                  **
-// **                                                                                  **
-
 function ftp_closeconnection($conn_id) {
 
 // --------------
 // This function closes an ftp connection
 // --------------
 
-	ftp_quit($conn_id);
+// Global variables
+	global $net2ftp_globals;
+
+// Close the connection
+	if ($net2ftp_globals["protocol"] == "FTP-SSH") { $conn_id->disconnect(); }
+	else                                           { ftp_close($conn_id); }
 
 } // End function ftp_closeconnection
+
+// **                                                                                  **
+// **                                                                                  **
+// **************************************************************************************
+// **************************************************************************************
+
+
+
+
+
+// **************************************************************************************
+// **************************************************************************************
+// **                                                                                  **
+// **                                                                                  **
+
+function ftp_getsshfingerprint($connection_number = 1) {
+
+// --------------
+// This function returns the fingerprint of the SSH server's public key
+// --------------
+
+// Global variables
+	global $net2ftp_globals, $net2ftp_result;
+
+// Open the first (main) or second connection
+	if ($connection_number == 1) {
+		$ftpserver        = $net2ftp_globals["ftpserver"];
+		$ftpserverport    = $net2ftp_globals["ftpserverport"];
+	}
+	else {
+		$ftpserver        = $net2ftp_globals["ftpserver2"];
+		$ftpserverport    = $net2ftp_globals["ftpserverport2"];
+	}
+
+// Check if port nr is filled in
+	if ($ftpserverport  < 1 || $ftpserverport  > 65535 || $ftpserverport  == "") { $ftpserverport  = 22; }
+
+// Set up basic connection (without logging in as we don't know yet if we're connecting to the correct server)
+	$conn_id = new Net_SSH2($ftpserver, $ftpserverport);
+	if ($conn_id == false) {
+		$errormessage = __("Could not connect to SSH server"); 
+		setErrorVars(false, $errormessage, debug_backtrace(), __FILE__, __LINE__);
+		return false;
+	}
+
+// Get the fingerprint
+	$serverpublickey = $conn_id->getServerPublicHostKey();
+	if ($serverpublickey == false) {
+		$conn_id->disconnect();
+		$errormessage = __("Could not get public host key");
+		setErrorVars(false, $errormessage, debug_backtrace(), __FILE__, __LINE__);
+		return false;
+	}
+
+// Close the connection
+	$conn_id->disconnect();
+
+// Return the fingerprint of the SSH server's public key
+	$content = explode(' ', $serverpublickey, 3);
+	$sshfingerprint = join(':', str_split(md5(base64_decode($content[1])), 2));
+	return $sshfingerprint;
+
+} // End function ftp_getsshfingerprint
 
 // **                                                                                  **
 // **                                                                                  **
@@ -195,10 +264,22 @@ function ftp_rename2($conn_id, $directory, $entry, $newName) {
 // This function renames a directory
 // --------------
 
+// Global variables
+	global $net2ftp_globals;
+
+// Form the old and new name
 	$old = glueDirectories($directory, $entry);
 	$new = glueDirectories($directory, $newName);
 
-	$ftp_rename_result = ftp_rename($conn_id, $old, $new);
+// Rename
+	if ($net2ftp_globals["protocol"] == "FTP" || $net2ftp_globals["protocol"] == "FTP-SSL") {
+		$ftp_rename_result = ftp_rename($conn_id, $old, $new);
+	}
+	elseif ($net2ftp_globals["protocol"] == "FTP-SSH") {
+		$ftp_rename_result = $conn_id->rename($old, $new);
+	}
+
+// Return result
 	if ($ftp_rename_result == false) { 
 		$errormessage = __("Unable to rename directory or file <b>%1\$s</b> into <b>%2\$s</b>", $old, $new);
 		setErrorVars(false, $errormessage, debug_backtrace(), __FILE__, __LINE__);
@@ -227,7 +308,18 @@ function ftp_rename3($conn_id, $old, $new) {
 // This function renames a directory or file
 // --------------
 
-	$ftp_rename_result = ftp_rename($conn_id, $old, $new);
+// Global variables
+	global $net2ftp_globals;
+
+// Rename
+	if ($net2ftp_globals["protocol"] == "FTP" || $net2ftp_globals["protocol"] == "FTP-SSL") {
+		$ftp_rename_result = ftp_rename($conn_id, $old, $new);
+	}
+	elseif ($net2ftp_globals["protocol"] == "FTP-SSH") {
+		$ftp_rename_result = $conn_id->rename($old, $new);
+	}
+
+// Return result
 	if ($ftp_rename_result == false) { 
 		$errormessage = __("Unable to rename directory or file <b>%1\$s</b> into <b>%2\$s</b>", $old, $new);
 		setErrorVars(false, $errormessage, debug_backtrace(), __FILE__, __LINE__);
@@ -309,7 +401,12 @@ function ftp_chmod2($conn_id, $directory, $list, $divelevel) {
 // ------------------------------------
 		if ($first_chmod_then_traverse == true && ($list["directories"][$i]["chmod_subdirectories"] == "yes" || $divelevel == 0)) {
 			$sitecommand = "chmod 0" . $list["directories"][$i]["chmodoctal"] . " $currentdirectory";
-			$success1 = ftp_site($conn_id, $sitecommand);
+			if ($net2ftp_globals["protocol"] == "FTP" || $net2ftp_globals["protocol"] == "FTP-SSL") {
+				$success1 = ftp_site($conn_id, $sitecommand);
+			}
+			elseif ($net2ftp_globals["protocol"] == "FTP-SSH") {
+				$success1 = $conn_id->chmod("0" . $list["directories"][$i]["chmodoctal"], $currentdirectory);
+			}
 			if ($success1 == false) { 
 				$errormessage =  __("Unable to execute site command <b>%1\$s</b>. Note that the CHMOD command is only available on Unix FTP servers, not on Windows FTP servers.", $sitecommand); 
 				setErrorVars(false, $errormessage, debug_backtrace(), __FILE__, __LINE__);
@@ -359,7 +456,12 @@ function ftp_chmod2($conn_id, $directory, $list, $divelevel) {
 // ------------------------------------
 		if ($first_chmod_then_traverse == false && ($list["directories"][$i]["chmod_subdirectories"] == "yes" || $divelevel == 0)) {
 			$sitecommand = "chmod 0" . $list["directories"][$i]["chmodoctal"] . " $currentdirectory";
-			$success1 = ftp_site($conn_id, $sitecommand);
+			if ($net2ftp_globals["protocol"] == "FTP" || $net2ftp_globals["protocol"] == "FTP-SSL") {
+				$success1 = ftp_site($conn_id, $sitecommand);
+			}
+			elseif ($net2ftp_globals["protocol"] == "FTP-SSH") {
+				$success1 = $conn_id->chmod("0" . $list["directories"][$i]["chmodoctal"], $currentdirectory);
+			}
 			if ($success1 == false) { 
 				$errormessage =  __("Unable to execute site command <b>%1\$s</b>. Note that the CHMOD command is only available on Unix FTP servers, not on Windows FTP servers.", $sitecommand); 
 				setErrorVars(false, $errormessage, debug_backtrace(), __FILE__, __LINE__);
@@ -385,7 +487,12 @@ function ftp_chmod2($conn_id, $directory, $list, $divelevel) {
 
 		if ($list["files"][$i]["chmod_subfiles"] == "yes" || $divelevel == 0) {
 			$sitecommand = "chmod 0" . $list["files"][$i]["chmodoctal"] . " $currentfile";
-			$success2 = ftp_site($conn_id, $sitecommand);
+			if ($net2ftp_globals["protocol"] == "FTP" || $net2ftp_globals["protocol"] == "FTP-SSL") {
+				$success2 = ftp_site($conn_id, $sitecommand);
+			}
+			elseif ($net2ftp_globals["protocol"] == "FTP-SSH") {
+				$success2 = $conn_id->chmod("0" . $list["files"][$i]["chmodoctal"], $currentfile);
+			}
 			if ($success2 == false) { 
 				$errormessage =  __("Unable to execute site command <b>%1\$s</b>. Note that the CHMOD command is only available on Unix FTP servers, not on Windows FTP servers.", $sitecommand); 
 				setErrorVars(false, $errormessage, debug_backtrace(), __FILE__, __LINE__);
@@ -425,11 +532,23 @@ function ftp_rmdir2($conn_id, $directory) {
 // This function deletes a directory
 // --------------
 
+// -------------------------------------------------------------------------
+// Global variables
+// -------------------------------------------------------------------------
+	global $net2ftp_globals;
+
+// -------------------------------------------------------------------------
 // Replace \' by \\' to be able to delete directories with names containing \'
+// -------------------------------------------------------------------------
 	$directory = str_replace("\'", "\\\'", $directory);
 
+// -------------------------------------------------------------------------
+// FTP and FTP-SSL
+// -------------------------------------------------------------------------
+	if ($net2ftp_globals["protocol"] == "FTP" || $net2ftp_globals["protocol"] == "FTP-SSL") {
+
 // QUICK WAY TO DELETE A DIRECTORY
-	$success1 = ftp_rmdir($conn_id, $directory);
+		$success1 = ftp_rmdir($conn_id, $directory);
 
 // THE FTP_RMDIR MAY NOT WORK WITH ALL FTP SERVERS, AS DESCRIBED ON THE FORUM
 // http://www.net2ftp.org/forums/index.php?showtopic=658
@@ -437,16 +556,28 @@ function ftp_rmdir2($conn_id, $directory) {
 //    1. chdir to the parent directory  /dir/parent
 //    2. delete the subdirectory, but use only its name (dirtodelete), not the full path (/dir/parent/dirtodelete)
 
-	if ($success1 == false) {
-		ftp_chdir($conn_id, upDir($directory));
-		$parts = explode("/", $directory);
-		$lastpartnr = sizeof($parts)-1;
-		$success2 = ftp_rmdir($conn_id, $parts[$lastpartnr]);
-		if ($success2 == false) { 
-			$errormessage = __("Unable to delete the directory <b>%1\$s</b>", $directory); 
-			setErrorVars(false, $errormessage, debug_backtrace(), __FILE__, __LINE__);
-			return false;
+		if ($success1 == false) {
+			ftp_chdir($conn_id, upDir($directory));
+			$parts = explode("/", $directory);
+			$lastpartnr = sizeof($parts)-1;
+			$success2 = ftp_rmdir($conn_id, $parts[$lastpartnr]);
 		}
+	}
+
+// -------------------------------------------------------------------------
+// FTP-SSH
+// -------------------------------------------------------------------------
+	elseif ($net2ftp_globals["protocol"] == "FTP-SSH") {
+		$success2 = $conn_id->rmdir($directory);
+	}
+
+// -------------------------------------------------------------------------
+// Return result
+// -------------------------------------------------------------------------
+	if ($success2 == false) { 
+		$errormessage = __("Unable to delete the directory <b>%1\$s</b>", $directory); 
+		setErrorVars(false, $errormessage, debug_backtrace(), __FILE__, __LINE__);
+		return false;
 	}
 
 } // End function ftp_rmdir2
@@ -471,10 +602,23 @@ function ftp_delete2($conn_id, $file) {
 // This function deletes a file
 // --------------
 
+// -------------------------------------------------------------------------
+// Global variables
+// -------------------------------------------------------------------------
+	global $net2ftp_globals;
+
+// -------------------------------------------------------------------------
 // Replace \' by \\' to be able to delete directories with names containing \'
+// -------------------------------------------------------------------------
 	$file = str_replace("\'", "\\\'", $file);
 
-	$success1 = ftp_delete($conn_id, $file);
+// -------------------------------------------------------------------------
+// FTP and FTP-SSL
+// -------------------------------------------------------------------------
+	if ($net2ftp_globals["protocol"] == "FTP" || $net2ftp_globals["protocol"] == "FTP-SSL") {
+
+// QUICK WAY TO DELETE A FILE
+		$success1 = ftp_delete($conn_id, $file);
 
 // THE FTP_RMDIR MAY NOT WORK WITH ALL FTP SERVERS, AS DESCRIBED ON THE FORUM
 // http://www.net2ftp.org/forums/index.php?showtopic=658
@@ -482,16 +626,28 @@ function ftp_delete2($conn_id, $file) {
 //    1. chdir to the parent directory  /dir/parent
 //    2. delete the subdirectory, but use only its name (dirtodelete), not the full path (/dir/parent/dirtodelete)
 
-	if ($success1 == false) {
-		ftp_chdir($conn_id, upDir($file));
-		$parts = explode("/", $file);
-		$lastpartnr = sizeof($parts)-1;
-		$success2 = ftp_delete($conn_id, $parts[$lastpartnr]);
-		if ($success2 == false) { 
-			$errormessage = __("Unable to delete the file <b>%1\$s</b>", $file); 
-			setErrorVars(false, $errormessage, debug_backtrace(), __FILE__, __LINE__);
-			return false;
+		if ($success1 == false) {
+			ftp_chdir($conn_id, upDir($file));
+			$parts = explode("/", $file);
+			$lastpartnr = sizeof($parts)-1;
+			$success2 = ftp_delete($conn_id, $parts[$lastpartnr]);
 		}
+	}
+
+// -------------------------------------------------------------------------
+// FTP-SSH
+// -------------------------------------------------------------------------
+	elseif ($net2ftp_globals["protocol"] == "FTP-SSH") {
+		$success2 = $conn_id->delete($file);
+	}
+
+// -------------------------------------------------------------------------
+// Return result
+// -------------------------------------------------------------------------
+	if ($success2 == false) { 
+		$errormessage = __("Unable to delete the file <b>%1\$s</b>", $file); 
+		setErrorVars(false, $errormessage, debug_backtrace(), __FILE__, __LINE__);
+		return false;
 	}
 
 } // End function ftp_delete2
@@ -516,7 +672,15 @@ function ftp_newdirectory($conn_id, $directory) {
 // This function creates a new remote directory
 // --------------
 
-	$success1 = ftp_mkdir($conn_id, $directory);
+	global $net2ftp_globals;
+
+	if ($net2ftp_globals["protocol"] == "FTP" || $net2ftp_globals["protocol"] == "FTP-SSL") {
+		$success1 = ftp_mkdir($conn_id, $directory);
+	}
+	elseif ($net2ftp_globals["protocol"] == "FTP-SSH") {
+		$success1 = $conn_id->mkdir($directory);
+	}
+
 	if ($success1 == false) { 
 		$errormessage = __("Unable to create the directory <b>%1\$s</b>", $directory);
 		setErrorVars(false, $errormessage, debug_backtrace(), __FILE__, __LINE__);
@@ -588,7 +752,13 @@ function ftp_readfile($conn_id, $directory, $file) {
 // Get file
 	$ftpmode = ftpAsciiBinary($source);
 
-	$ftp_get_result = ftp_get($conn_id, "$tempfilename", "$source", $ftpmode);
+	if ($net2ftp_globals["protocol"] == "FTP" || $net2ftp_globals["protocol"] == "FTP-SSL") {
+		$ftp_get_result = ftp_get($conn_id, "$tempfilename", "$source", $ftpmode);
+	}
+	elseif ($net2ftp_globals["protocol"] == "FTP-SSH") {
+		$ftp_get_result = $conn_id->get($source, $tempfilename);
+	}
+
 	if ($ftp_get_result == false) { 
 		@unlink($tempfilename); 
 		$errormessage = __("Unable to get the file <b>%1\$s</b> from the FTP server and to save it as temporary file <b>%2\$s</b>.<br />Check the permissions of the %3\$s directory.<br />", $source, $tempfilename, $net2ftp_globals["application_tempdir"]);
@@ -707,7 +877,13 @@ function ftp_writefile($conn_id, $directory, $file, $string) {
 	// The FTP mode is calculated a few lines above
 	//$ftpmode = ftpAsciiBinary($file);
 
-	$success3 = ftp_put($conn_id, $target, $tempfilename, $ftpmode);
+	if ($net2ftp_globals["protocol"] == "FTP" || $net2ftp_globals["protocol"] == "FTP-SSL") {
+		$success3 = ftp_put($conn_id, $target, $tempfilename, $ftpmode);
+	}
+	elseif ($net2ftp_globals["protocol"] == "FTP-SSH") {
+		$success3 = $conn_id->put($target, $tempfilename, NET_SFTP_LOCAL_FILE);
+	}
+	
 	if ($success3 == false) { 
 		@unlink($tempfilename); 
 		$errormessage = __("Unable to put the file <b>%1\$s</b> on the FTP server.<br />You may not have write permissions on the directory.", $target);
@@ -842,9 +1018,15 @@ function ftp_copymovedelete($conn_id_source, $conn_id_target, $list, $copymovede
 
 // Create the targetdirectory
 			if ($copymovedelete == "copy" || $copymovedelete == "move") {
-				$success1 = ftp_mkdir($conn_id_target, $target);
-				if ($success1 == false) { $net2ftp_output["ftp_copymovedelete"][] = __("Unable to create the subdirectory <b>%1\$s</b>. It may already exist. Continuing the copy/move process...", $target); }
-				else                    { $net2ftp_output["ftp_copymovedelete"][] = __("Created target subdirectory <b>%1\$s</b>", $target); }
+//				$success1 = ftp_mkdir($conn_id_target, $target);
+				$success1 = ftp_newdirectory($conn_id_target, $target);
+				if ($success1 == false) {
+	 				setErrorVars(true, "", "", "", ""); 
+					$net2ftp_output["ftp_copymovedelete"][] = __("Unable to create the subdirectory <b>%1\$s</b>. It may already exist. Continuing the copy/move process...", $target); 
+				}
+				else                    { 
+					$net2ftp_output["ftp_copymovedelete"][] = __("Created target subdirectory <b>%1\$s</b>", $target); 
+				}
 			}
 
 // Get a new list
@@ -1269,7 +1451,7 @@ function ftp_getfile($conn_id, $localtargetdir, $localtargetfile, $remotesourced
 // --------------
 
 // Global variables
-	global $net2ftp_settings;
+	global $net2ftp_settings, $net2ftp_globals;
 
 // Source and target
 	if ($ftpmode == FTP_ASCII)      { $printftpmode = "FTP_ASCII"; }
@@ -1294,7 +1476,12 @@ function ftp_getfile($conn_id, $localtargetdir, $localtargetfile, $remotesourced
 	}
 
 // Get file
-	$success1 = ftp_get($conn_id, $localtarget, $remotesource, $ftpmode);
+	if ($net2ftp_globals["protocol"] == "FTP" || $net2ftp_globals["protocol"] == "FTP-SSL") {
+		$success1 = ftp_get($conn_id, $localtarget, $remotesource, $ftpmode);
+	}
+	elseif ($net2ftp_globals["protocol"] == "FTP-SSH") {
+		$success1 = $conn_id->get($remotesource, $localtarget);
+	}
 	if ($success1 == false) { 
 		$errormessage = __("Unable to copy the remote file <b>%1\$s</b> to the local file using FTP mode <b>%2\$s</b>", $remotesource, $printftpmode); 
 		setErrorVars(false, $errormessage, debug_backtrace(), __FILE__, __LINE__);
@@ -1344,7 +1531,7 @@ function ftp_putfile($conn_id, $localsourcedir, $localsourcefile, $remotetargetd
 // --------------
 
 // Global variables
-	global $net2ftp_settings;
+	global $net2ftp_settings, $net2ftp_globals;
 
 // Source and target
 	$localsource  = glueDirectories($localsourcedir, $localsourcefile);
@@ -1376,8 +1563,12 @@ function ftp_putfile($conn_id, $localsourcedir, $localsourcefile, $remotetargetd
 	}
 
 // Put local file to remote file
-// int ftp_put (int ftp_stream, string remote_file, string local_file, int mode)
-	$success1 = ftp_put($conn_id, $remotetarget, $localsource, $ftpmode);
+	if ($net2ftp_globals["protocol"] == "FTP" || $net2ftp_globals["protocol"] == "FTP-SSL") {
+		$success1 = ftp_put($conn_id, $remotetarget, $localsource, $ftpmode);
+	}
+	elseif ($net2ftp_globals["protocol"] == "FTP-SSH") {
+		$success1 = $conn_id->put($remotetarget, $localsource, NET_SFTP_LOCAL_FILE);		
+	}
 	if ($success1 == false) { 
 		$errormessage = __("Unable to copy the local file to the remote file <b>%1\$s</b> using FTP mode <b>%2\$s</b>", $remotetarget, $printftpmode); 
 		setErrorVars(false, $errormessage, debug_backtrace(), __FILE__, __LINE__);
@@ -1425,178 +1616,178 @@ function getContentType($entry) {
 
 	$filename_extension = get_filename_extension($entry);
 
-	if     ($filename_extension == "ai") { $content_type = "application/postscript"; }
-	elseif ($filename_extension == "aif") { $content_type = "audio/x-aiff"; }
-	elseif ($filename_extension == "aifc") { $content_type = "audio/x-aiff"; }
-	elseif ($filename_extension == "aiff") { $content_type = "audio/x-aiff"; }
-	elseif ($filename_extension == "asc") { $content_type = "text/plain"; }
-	elseif ($filename_extension == "atom") { $content_type = "application/atom+xml"; }
-	elseif ($filename_extension == "au") { $content_type = "audio/basic"; }
-	elseif ($filename_extension == "avi") { $content_type = "video/x-msvideo"; }
+	if     ($filename_extension == "ai")    { $content_type = "application/postscript"; }
+	elseif ($filename_extension == "aif")   { $content_type = "audio/x-aiff"; }
+	elseif ($filename_extension == "aifc")  { $content_type = "audio/x-aiff"; }
+	elseif ($filename_extension == "aiff")  { $content_type = "audio/x-aiff"; }
+	elseif ($filename_extension == "asc")   { $content_type = "text/plain"; }
+	elseif ($filename_extension == "atom")  { $content_type = "application/atom+xml"; }
+	elseif ($filename_extension == "au")    { $content_type = "audio/basic"; }
+	elseif ($filename_extension == "avi")   { $content_type = "video/x-msvideo"; }
 	elseif ($filename_extension == "bcpio") { $content_type = "application/x-bcpio"; }
-	elseif ($filename_extension == "bin") { $content_type = "application/octet-stream"; }
-	elseif ($filename_extension == "bmp") { $content_type = "image/bmp"; }
-	elseif ($filename_extension == "cdf") { $content_type = "application/x-netcdf"; }
-	elseif ($filename_extension == "cgm") { $content_type = "image/cgm"; }
+	elseif ($filename_extension == "bin")   { $content_type = "application/octet-stream"; }
+	elseif ($filename_extension == "bmp")   { $content_type = "image/bmp"; }
+	elseif ($filename_extension == "cdf")   { $content_type = "application/x-netcdf"; }
+	elseif ($filename_extension == "cgm")   { $content_type = "image/cgm"; }
 	elseif ($filename_extension == "class") { $content_type = "application/octet-stream"; }
-	elseif ($filename_extension == "cpio") { $content_type = "application/x-cpio"; }
-	elseif ($filename_extension == "cpt") { $content_type = "application/mac-compactpro"; }
-	elseif ($filename_extension == "csh") { $content_type = "application/x-csh"; }
-	elseif ($filename_extension == "css") { $content_type = "text/css"; }
-	elseif ($filename_extension == "dcr") { $content_type = "application/x-director"; }
-	elseif ($filename_extension == "dif") { $content_type = "video/x-dv"; }
-	elseif ($filename_extension == "dir") { $content_type = "application/x-director"; }
-	elseif ($filename_extension == "djv") { $content_type = "image/vnd.djvu"; }
-	elseif ($filename_extension == "djvu") { $content_type = "image/vnd.djvu"; }
-	elseif ($filename_extension == "dll") { $content_type = "application/octet-stream"; }
-	elseif ($filename_extension == "dmg") { $content_type = "application/octet-stream"; }
-	elseif ($filename_extension == "dms") { $content_type = "application/octet-stream"; }
-	elseif ($filename_extension == "doc") { $content_type = "application/msword"; }
-	elseif ($filename_extension == "dtd") { $content_type = "application/xml-dtd"; }
-	elseif ($filename_extension == "dv") { $content_type = "video/x-dv"; }
-	elseif ($filename_extension == "dvi") { $content_type = "application/x-dvi"; }
-	elseif ($filename_extension == "dxr") { $content_type = "application/x-director"; }
-	elseif ($filename_extension == "eps") { $content_type = "application/postscript"; }
-	elseif ($filename_extension == "etx") { $content_type = "text/x-setext"; }
-	elseif ($filename_extension == "exe") { $content_type = "application/octet-stream"; }
-	elseif ($filename_extension == "ez") { $content_type = "application/andrew-inset"; }
-	elseif ($filename_extension == "gif") { $content_type = "image/gif"; }
-	elseif ($filename_extension == "gram") { $content_type = "application/srgs"; }
+	elseif ($filename_extension == "cpio")  { $content_type = "application/x-cpio"; }
+	elseif ($filename_extension == "cpt")   { $content_type = "application/mac-compactpro"; }
+	elseif ($filename_extension == "csh")   { $content_type = "application/x-csh"; }
+	elseif ($filename_extension == "css")   { $content_type = "text/css"; }
+	elseif ($filename_extension == "dcr")   { $content_type = "application/x-director"; }
+	elseif ($filename_extension == "dif")   { $content_type = "video/x-dv"; }
+	elseif ($filename_extension == "dir")   { $content_type = "application/x-director"; }
+	elseif ($filename_extension == "djv")   { $content_type = "image/vnd.djvu"; }
+	elseif ($filename_extension == "djvu")  { $content_type = "image/vnd.djvu"; }
+	elseif ($filename_extension == "dll")   { $content_type = "application/octet-stream"; }
+	elseif ($filename_extension == "dmg")   { $content_type = "application/octet-stream"; }
+	elseif ($filename_extension == "dms")   { $content_type = "application/octet-stream"; }
+	elseif ($filename_extension == "doc")   { $content_type = "application/msword"; }
+	elseif ($filename_extension == "dtd")   { $content_type = "application/xml-dtd"; }
+	elseif ($filename_extension == "dv")    { $content_type = "video/x-dv"; }
+	elseif ($filename_extension == "dvi")   { $content_type = "application/x-dvi"; }
+	elseif ($filename_extension == "dxr")   { $content_type = "application/x-director"; }
+	elseif ($filename_extension == "eps")   { $content_type = "application/postscript"; }
+	elseif ($filename_extension == "etx")   { $content_type = "text/x-setext"; }
+	elseif ($filename_extension == "exe")   { $content_type = "application/octet-stream"; }
+	elseif ($filename_extension == "ez")    { $content_type = "application/andrew-inset"; }
+	elseif ($filename_extension == "gif")   { $content_type = "image/gif"; }
+	elseif ($filename_extension == "gram")  { $content_type = "application/srgs"; }
 	elseif ($filename_extension == "grxml") { $content_type = "application/srgs+xml"; }
-	elseif ($filename_extension == "gtar") { $content_type = "application/x-gtar"; }
-	elseif ($filename_extension == "hdf") { $content_type = "application/x-hdf"; }
-	elseif ($filename_extension == "hqx") { $content_type = "application/mac-binhex40"; }
-	elseif ($filename_extension == "htm") { $content_type = "text/html"; }
-	elseif ($filename_extension == "html") { $content_type = "text/html"; }
-	elseif ($filename_extension == "ice") { $content_type = "x-conference/x-cooltalk"; }
-	elseif ($filename_extension == "ico") { $content_type = "image/x-icon"; }
-	elseif ($filename_extension == "ics") { $content_type = "text/calendar"; }
-	elseif ($filename_extension == "ief") { $content_type = "image/ief"; }
-	elseif ($filename_extension == "ifb") { $content_type = "text/calendar"; }
-	elseif ($filename_extension == "iges") { $content_type = "model/iges"; }
-	elseif ($filename_extension == "igs") { $content_type = "model/iges"; }
-	elseif ($filename_extension == "jnlp") { $content_type = "application/x-java-jnlp-file"; }
-	elseif ($filename_extension == "jp2") { $content_type = "image/jp2"; }
-	elseif ($filename_extension == "jpe") { $content_type = "image/jpeg"; }
-	elseif ($filename_extension == "jpeg") { $content_type = "image/jpeg"; }
-	elseif ($filename_extension == "jpg") { $content_type = "image/jpeg"; }
-	elseif ($filename_extension == "js") { $content_type = "application/x-javascript"; }
-	elseif ($filename_extension == "kar") { $content_type = "audio/midi"; }
+	elseif ($filename_extension == "gtar")  { $content_type = "application/x-gtar"; }
+	elseif ($filename_extension == "hdf")   { $content_type = "application/x-hdf"; }
+	elseif ($filename_extension == "hqx")   { $content_type = "application/mac-binhex40"; }
+	elseif ($filename_extension == "htm")   { $content_type = "text/html"; }
+	elseif ($filename_extension == "html")  { $content_type = "text/html"; }
+	elseif ($filename_extension == "ice")   { $content_type = "x-conference/x-cooltalk"; }
+	elseif ($filename_extension == "ico")   { $content_type = "image/x-icon"; }
+	elseif ($filename_extension == "ics")   { $content_type = "text/calendar"; }
+	elseif ($filename_extension == "ief")   { $content_type = "image/ief"; }
+	elseif ($filename_extension == "ifb")   { $content_type = "text/calendar"; }
+	elseif ($filename_extension == "iges")  { $content_type = "model/iges"; }
+	elseif ($filename_extension == "igs")   { $content_type = "model/iges"; }
+	elseif ($filename_extension == "jnlp")  { $content_type = "application/x-java-jnlp-file"; }
+	elseif ($filename_extension == "jp2")   { $content_type = "image/jp2"; }
+	elseif ($filename_extension == "jpe")   { $content_type = "image/jpeg"; }
+	elseif ($filename_extension == "jpeg")  { $content_type = "image/jpeg"; }
+	elseif ($filename_extension == "jpg")   { $content_type = "image/jpeg"; }
+	elseif ($filename_extension == "js")    { $content_type = "application/x-javascript"; }
+	elseif ($filename_extension == "kar")   { $content_type = "audio/midi"; }
 	elseif ($filename_extension == "latex") { $content_type = "application/x-latex"; }
-	elseif ($filename_extension == "lha") { $content_type = "application/octet-stream"; }
-	elseif ($filename_extension == "lzh") { $content_type = "application/octet-stream"; }
-	elseif ($filename_extension == "m3u") { $content_type = "audio/x-mpegurl"; }
-	elseif ($filename_extension == "m4a") { $content_type = "audio/mp4a-latm"; }
-	elseif ($filename_extension == "m4b") { $content_type = "audio/mp4a-latm"; }
-	elseif ($filename_extension == "m4p") { $content_type = "audio/mp4a-latm"; }
-	elseif ($filename_extension == "m4u") { $content_type = "video/vnd.mpegurl"; }
-	elseif ($filename_extension == "m4v") { $content_type = "video/x-m4v"; }
-	elseif ($filename_extension == "mac") { $content_type = "image/x-macpaint"; }
-	elseif ($filename_extension == "man") { $content_type = "application/x-troff-man"; }
+	elseif ($filename_extension == "lha")   { $content_type = "application/octet-stream"; }
+	elseif ($filename_extension == "lzh")   { $content_type = "application/octet-stream"; }
+	elseif ($filename_extension == "m3u")   { $content_type = "audio/x-mpegurl"; }
+	elseif ($filename_extension == "m4a")   { $content_type = "audio/mp4a-latm"; }
+	elseif ($filename_extension == "m4b")   { $content_type = "audio/mp4a-latm"; }
+	elseif ($filename_extension == "m4p")   { $content_type = "audio/mp4a-latm"; }
+	elseif ($filename_extension == "m4u")   { $content_type = "video/vnd.mpegurl"; }
+	elseif ($filename_extension == "m4v")   { $content_type = "video/x-m4v"; }
+	elseif ($filename_extension == "mac")   { $content_type = "image/x-macpaint"; }
+	elseif ($filename_extension == "man")   { $content_type = "application/x-troff-man"; }
 	elseif ($filename_extension == "mathml") { $content_type = "application/mathml+xml"; }
-	elseif ($filename_extension == "me") { $content_type = "application/x-troff-me"; }
-	elseif ($filename_extension == "mesh") { $content_type = "model/mesh"; }
-	elseif ($filename_extension == "mid") { $content_type = "audio/midi"; }
-	elseif ($filename_extension == "midi") { $content_type = "audio/midi"; }
-	elseif ($filename_extension == "mif") { $content_type = "application/vnd.mif"; }
-	elseif ($filename_extension == "mov") { $content_type = "video/quicktime"; }
+	elseif ($filename_extension == "me")    { $content_type = "application/x-troff-me"; }
+	elseif ($filename_extension == "mesh")  { $content_type = "model/mesh"; }
+	elseif ($filename_extension == "mid")   { $content_type = "audio/midi"; }
+	elseif ($filename_extension == "midi")  { $content_type = "audio/midi"; }
+	elseif ($filename_extension == "mif")   { $content_type = "application/vnd.mif"; }
+	elseif ($filename_extension == "mov")   { $content_type = "video/quicktime"; }
 	elseif ($filename_extension == "movie") { $content_type = "video/x-sgi-movie"; }
-	elseif ($filename_extension == "mp2") { $content_type = "audio/mpeg"; }
-	elseif ($filename_extension == "mp3") { $content_type = "audio/mpeg"; }
-	elseif ($filename_extension == "mp4") { $content_type = "video/mp4"; }
-	elseif ($filename_extension == "mpe") { $content_type = "video/mpeg"; }
-	elseif ($filename_extension == "mpeg") { $content_type = "video/mpeg"; }
-	elseif ($filename_extension == "mpg") { $content_type = "video/mpeg"; }
-	elseif ($filename_extension == "mpga") { $content_type = "audio/mpeg"; }
-	elseif ($filename_extension == "ms") { $content_type = "application/x-troff-ms"; }
-	elseif ($filename_extension == "msh") { $content_type = "model/mesh"; }
-	elseif ($filename_extension == "mxu") { $content_type = "video/vnd.mpegurl"; }
-	elseif ($filename_extension == "nc") { $content_type = "application/x-netcdf"; }
-	elseif ($filename_extension == "oda") { $content_type = "application/oda"; }
-	elseif ($filename_extension == "ogg") { $content_type = "application/ogg"; }
-	elseif ($filename_extension == "pbm") { $content_type = "image/x-portable-bitmap"; }
-	elseif ($filename_extension == "pct") { $content_type = "image/pict"; }
-	elseif ($filename_extension == "pdb") { $content_type = "chemical/x-pdb"; }
-	elseif ($filename_extension == "pdf") { $content_type = "application/pdf"; }
-	elseif ($filename_extension == "pgm") { $content_type = "image/x-portable-graymap"; }
-	elseif ($filename_extension == "pgn") { $content_type = "application/x-chess-pgn"; }
-	elseif ($filename_extension == "pic") { $content_type = "image/pict"; }
-	elseif ($filename_extension == "pict") { $content_type = "image/pict"; }
-	elseif ($filename_extension == "png") { $content_type = "image/png"; }
-	elseif ($filename_extension == "pnm") { $content_type = "image/x-portable-anymap"; }
-	elseif ($filename_extension == "pnt") { $content_type = "image/x-macpaint"; }
-	elseif ($filename_extension == "pntg") { $content_type = "image/x-macpaint"; }
-	elseif ($filename_extension == "ppm") { $content_type = "image/x-portable-pixmap"; }
-	elseif ($filename_extension == "ppt") { $content_type = "application/vnd.ms-powerpoint"; }
-	elseif ($filename_extension == "ps") { $content_type = "application/postscript"; }
-	elseif ($filename_extension == "qt") { $content_type = "video/quicktime"; }
-	elseif ($filename_extension == "qti") { $content_type = "image/x-quicktime"; }
-	elseif ($filename_extension == "qtif") { $content_type = "image/x-quicktime"; }
-	elseif ($filename_extension == "ra") { $content_type = "audio/x-pn-realaudio"; }
-	elseif ($filename_extension == "ram") { $content_type = "audio/x-pn-realaudio"; }
-	elseif ($filename_extension == "ras") { $content_type = "image/x-cmu-raster"; }
-	elseif ($filename_extension == "rdf") { $content_type = "application/rdf+xml"; }
-	elseif ($filename_extension == "rgb") { $content_type = "image/x-rgb"; }
-	elseif ($filename_extension == "rm") { $content_type = "application/vnd.rn-realmedia"; }
-	elseif ($filename_extension == "roff") { $content_type = "application/x-troff"; }
-	elseif ($filename_extension == "rtf") { $content_type = "text/rtf"; }
-	elseif ($filename_extension == "rtx") { $content_type = "text/richtext"; }
-	elseif ($filename_extension == "sgm") { $content_type = "text/sgml"; }
-	elseif ($filename_extension == "sgml") { $content_type = "text/sgml"; }
-	elseif ($filename_extension == "sh") { $content_type = "application/x-sh"; }
-	elseif ($filename_extension == "shar") { $content_type = "application/x-shar"; }
-	elseif ($filename_extension == "silo") { $content_type = "model/mesh"; }
-	elseif ($filename_extension == "sit") { $content_type = "application/x-stuffit"; }
-	elseif ($filename_extension == "skd") { $content_type = "application/x-koan"; }
-	elseif ($filename_extension == "skm") { $content_type = "application/x-koan"; }
-	elseif ($filename_extension == "skp") { $content_type = "application/x-koan"; }
-	elseif ($filename_extension == "skt") { $content_type = "application/x-koan"; }
-	elseif ($filename_extension == "smi") { $content_type = "application/smil"; }
-	elseif ($filename_extension == "smil") { $content_type = "application/smil"; }
-	elseif ($filename_extension == "snd") { $content_type = "audio/basic"; }
-	elseif ($filename_extension == "so") { $content_type = "application/octet-stream"; }
-	elseif ($filename_extension == "spl") { $content_type = "application/x-futuresplash"; }
-	elseif ($filename_extension == "src") { $content_type = "application/x-wais-source"; }
+	elseif ($filename_extension == "mp2")   { $content_type = "audio/mpeg"; }
+	elseif ($filename_extension == "mp3")   { $content_type = "audio/mpeg"; }
+	elseif ($filename_extension == "mp4")   { $content_type = "video/mp4"; }
+	elseif ($filename_extension == "mpe")   { $content_type = "video/mpeg"; }
+	elseif ($filename_extension == "mpeg")  { $content_type = "video/mpeg"; }
+	elseif ($filename_extension == "mpg")   { $content_type = "video/mpeg"; }
+	elseif ($filename_extension == "mpga")  { $content_type = "audio/mpeg"; }
+	elseif ($filename_extension == "ms")    { $content_type = "application/x-troff-ms"; }
+	elseif ($filename_extension == "msh")   { $content_type = "model/mesh"; }
+	elseif ($filename_extension == "mxu")   { $content_type = "video/vnd.mpegurl"; }
+	elseif ($filename_extension == "nc")    { $content_type = "application/x-netcdf"; }
+	elseif ($filename_extension == "oda")   { $content_type = "application/oda"; }
+	elseif ($filename_extension == "ogg")   { $content_type = "application/ogg"; }
+	elseif ($filename_extension == "pbm")   { $content_type = "image/x-portable-bitmap"; }
+	elseif ($filename_extension == "pct")   { $content_type = "image/pict"; }
+	elseif ($filename_extension == "pdb")   { $content_type = "chemical/x-pdb"; }
+	elseif ($filename_extension == "pdf")   { $content_type = "application/pdf"; }
+	elseif ($filename_extension == "pgm")   { $content_type = "image/x-portable-graymap"; }
+	elseif ($filename_extension == "pgn")   { $content_type = "application/x-chess-pgn"; }
+	elseif ($filename_extension == "pic")   { $content_type = "image/pict"; }
+	elseif ($filename_extension == "pict")  { $content_type = "image/pict"; }
+	elseif ($filename_extension == "png")   { $content_type = "image/png"; }
+	elseif ($filename_extension == "pnm")   { $content_type = "image/x-portable-anymap"; }
+	elseif ($filename_extension == "pnt")   { $content_type = "image/x-macpaint"; }
+	elseif ($filename_extension == "pntg")  { $content_type = "image/x-macpaint"; }
+	elseif ($filename_extension == "ppm")   { $content_type = "image/x-portable-pixmap"; }
+	elseif ($filename_extension == "ppt")   { $content_type = "application/vnd.ms-powerpoint"; }
+	elseif ($filename_extension == "ps")    { $content_type = "application/postscript"; }
+	elseif ($filename_extension == "qt")    { $content_type = "video/quicktime"; }
+	elseif ($filename_extension == "qti")   { $content_type = "image/x-quicktime"; }
+	elseif ($filename_extension == "qtif")  { $content_type = "image/x-quicktime"; }
+	elseif ($filename_extension == "ra")    { $content_type = "audio/x-pn-realaudio"; }
+	elseif ($filename_extension == "ram")   { $content_type = "audio/x-pn-realaudio"; }
+	elseif ($filename_extension == "ras")   { $content_type = "image/x-cmu-raster"; }
+	elseif ($filename_extension == "rdf")   { $content_type = "application/rdf+xml"; }
+	elseif ($filename_extension == "rgb")   { $content_type = "image/x-rgb"; }
+	elseif ($filename_extension == "rm")    { $content_type = "application/vnd.rn-realmedia"; }
+	elseif ($filename_extension == "roff")  { $content_type = "application/x-troff"; }
+	elseif ($filename_extension == "rtf")   { $content_type = "text/rtf"; }
+	elseif ($filename_extension == "rtx")   { $content_type = "text/richtext"; }
+	elseif ($filename_extension == "sgm")   { $content_type = "text/sgml"; }
+	elseif ($filename_extension == "sgml")  { $content_type = "text/sgml"; }
+	elseif ($filename_extension == "sh")    { $content_type = "application/x-sh"; }
+	elseif ($filename_extension == "shar")  { $content_type = "application/x-shar"; }
+	elseif ($filename_extension == "silo")  { $content_type = "model/mesh"; }
+	elseif ($filename_extension == "sit")   { $content_type = "application/x-stuffit"; }
+	elseif ($filename_extension == "skd")   { $content_type = "application/x-koan"; }
+	elseif ($filename_extension == "skm")   { $content_type = "application/x-koan"; }
+	elseif ($filename_extension == "skp")   { $content_type = "application/x-koan"; }
+	elseif ($filename_extension == "skt")   { $content_type = "application/x-koan"; }
+	elseif ($filename_extension == "smi")   { $content_type = "application/smil"; }
+	elseif ($filename_extension == "smil")  { $content_type = "application/smil"; }
+	elseif ($filename_extension == "snd")   { $content_type = "audio/basic"; }
+	elseif ($filename_extension == "so")    { $content_type = "application/octet-stream"; }
+	elseif ($filename_extension == "spl")   { $content_type = "application/x-futuresplash"; }
+	elseif ($filename_extension == "src")   { $content_type = "application/x-wais-source"; }
 	elseif ($filename_extension == "sv4cpio") { $content_type = "application/x-sv4cpio"; }
-	elseif ($filename_extension == "sv4crc") { $content_type = "application/x-sv4crc"; }
-	elseif ($filename_extension == "svg") { $content_type = "image/svg+xml"; }
-	elseif ($filename_extension == "swf") { $content_type = "application/x-shockwave-flash"; }
-	elseif ($filename_extension == "t") { $content_type = "application/x-troff"; }
-	elseif ($filename_extension == "tar") { $content_type = "application/x-tar"; }
-	elseif ($filename_extension == "tcl") { $content_type = "application/x-tcl"; }
-	elseif ($filename_extension == "tex") { $content_type = "application/x-tex"; }
-	elseif ($filename_extension == "texi") { $content_type = "application/x-texinfo"; }
+	elseif ($filename_extension == "sv4crc")  { $content_type = "application/x-sv4crc"; }
+	elseif ($filename_extension == "svg")   { $content_type = "image/svg+xml"; }
+	elseif ($filename_extension == "swf")   { $content_type = "application/x-shockwave-flash"; }
+	elseif ($filename_extension == "t")     { $content_type = "application/x-troff"; }
+	elseif ($filename_extension == "tar")   { $content_type = "application/x-tar"; }
+	elseif ($filename_extension == "tcl")   { $content_type = "application/x-tcl"; }
+	elseif ($filename_extension == "tex")   { $content_type = "application/x-tex"; }
+	elseif ($filename_extension == "texi")  { $content_type = "application/x-texinfo"; }
 	elseif ($filename_extension == "texinfo") { $content_type = "application/x-texinfo"; }
-	elseif ($filename_extension == "tif") { $content_type = "image/tiff"; }
-	elseif ($filename_extension == "tiff") { $content_type = "image/tiff"; }
-	elseif ($filename_extension == "tr") { $content_type = "application/x-troff"; }
-	elseif ($filename_extension == "tsv") { $content_type = "text/tab-separated-values"; }
-	elseif ($filename_extension == "txt") { $content_type = "text/plain"; }
+	elseif ($filename_extension == "tif")   { $content_type = "image/tiff"; }
+	elseif ($filename_extension == "tiff")  { $content_type = "image/tiff"; }
+	elseif ($filename_extension == "tr")    { $content_type = "application/x-troff"; }
+	elseif ($filename_extension == "tsv")   { $content_type = "text/tab-separated-values"; }
+	elseif ($filename_extension == "txt")   { $content_type = "text/plain"; }
 	elseif ($filename_extension == "ustar") { $content_type = "application/x-ustar"; }
-	elseif ($filename_extension == "vcd") { $content_type = "application/x-cdlink"; }
-	elseif ($filename_extension == "vrml") { $content_type = "model/vrml"; }
-	elseif ($filename_extension == "vxml") { $content_type = "application/voicexml+xml"; }
-	elseif ($filename_extension == "wav") { $content_type = "audio/x-wav"; }
-	elseif ($filename_extension == "wbmp") { $content_type = "image/vnd.wap.wbmp"; }
+	elseif ($filename_extension == "vcd")   { $content_type = "application/x-cdlink"; }
+	elseif ($filename_extension == "vrml")  { $content_type = "model/vrml"; }
+	elseif ($filename_extension == "vxml")  { $content_type = "application/voicexml+xml"; }
+	elseif ($filename_extension == "wav")   { $content_type = "audio/x-wav"; }
+	elseif ($filename_extension == "wbmp")  { $content_type = "image/vnd.wap.wbmp"; }
 	elseif ($filename_extension == "wbmxl") { $content_type = "application/vnd.wap.wbxml"; }
-	elseif ($filename_extension == "wml") { $content_type = "text/vnd.wap.wml"; }
-	elseif ($filename_extension == "wmlc") { $content_type = "application/vnd.wap.wmlc"; }
-	elseif ($filename_extension == "wmls") { $content_type = "text/vnd.wap.wmlscript"; }
+	elseif ($filename_extension == "wml")   { $content_type = "text/vnd.wap.wml"; }
+	elseif ($filename_extension == "wmlc")  { $content_type = "application/vnd.wap.wmlc"; }
+	elseif ($filename_extension == "wmls")  { $content_type = "text/vnd.wap.wmlscript"; }
 	elseif ($filename_extension == "wmlsc") { $content_type = "application/vnd.wap.wmlscriptc"; }
-	elseif ($filename_extension == "wrl") { $content_type = "model/vrml"; }
-	elseif ($filename_extension == "xbm") { $content_type = "image/x-xbitmap"; }
-	elseif ($filename_extension == "xht") { $content_type = "application/xhtml+xml"; }
+	elseif ($filename_extension == "wrl")   { $content_type = "model/vrml"; }
+	elseif ($filename_extension == "xbm")   { $content_type = "image/x-xbitmap"; }
+	elseif ($filename_extension == "xht")   { $content_type = "application/xhtml+xml"; }
 	elseif ($filename_extension == "xhtml") { $content_type = "application/xhtml+xml"; }
-	elseif ($filename_extension == "xls") { $content_type = "application/vnd.ms-excel"; }
-	elseif ($filename_extension == "xml") { $content_type = "application/xml"; }
-	elseif ($filename_extension == "xpm") { $content_type = "image/x-xpixmap"; }
-	elseif ($filename_extension == "xsl") { $content_type = "application/xml"; }
-	elseif ($filename_extension == "xslt") { $content_type = "application/xslt+xml"; }
-	elseif ($filename_extension == "xul") { $content_type = "application/vnd.mozilla.xul+xml"; }
-	elseif ($filename_extension == "xwd") { $content_type = "image/x-xwindowdump"; }
-	elseif ($filename_extension == "xyz") { $content_type = "chemical/x-xyz"; }
-	elseif ($filename_extension == "zip") { $content_type = "application/zip"; }
-	else                                  { $content_type = "application/octet-stream"; }
+	elseif ($filename_extension == "xls")   { $content_type = "application/vnd.ms-excel"; }
+	elseif ($filename_extension == "xml")   { $content_type = "application/xml"; }
+	elseif ($filename_extension == "xpm")   { $content_type = "image/x-xpixmap"; }
+	elseif ($filename_extension == "xsl")   { $content_type = "application/xml"; }
+	elseif ($filename_extension == "xslt")  { $content_type = "application/xslt+xml"; }
+	elseif ($filename_extension == "xul")   { $content_type = "application/vnd.mozilla.xul+xml"; }
+	elseif ($filename_extension == "xwd")   { $content_type = "image/x-xwindowdump"; }
+	elseif ($filename_extension == "xyz")   { $content_type = "chemical/x-xyz"; }
+	elseif ($filename_extension == "zip")   { $content_type = "application/zip"; }
+	else                                    { $content_type = "application/octet-stream"; }
 
 	return $content_type;
 }
@@ -2364,7 +2555,14 @@ function ftp_mysite($conn_id, $command) {
 //    - PHP does not return any result other than TRUE or FALSE
 // --------------
 
-	$success1 = ftp_site($conn_id, $command);
+	global $net2ftp_globals;
+
+	if ($net2ftp_globals["protocol"] == "FTP" || $net2ftp_globals["protocol"] == "FTP-SSL") {
+		$success1 = ftp_site($conn_id, $command);
+	}
+	elseif ($net2ftp_globals["protocol"] == "FTP-SSH") {
+		$conn_id->exec($command);
+	}
 	if ($success1 == false) { 
 		$errormessage = __("Unable to execute site command <b>%1\$s</b>", $command); 
 		setErrorVars(false, $errormessage, debug_backtrace(), __FILE__, __LINE__);
@@ -2953,13 +3151,8 @@ function checkEmailAddress($email) {
 // Returns true for valid email addresses, false for non-valid email addresses
 // --------------
 
-	if (eregi( "^" .
-	           "[a-z0-9]+([_\.-][a-z0-9]+)*" .    //user
-	           "@" .
-	           "([a-z0-9]+([\.-][a-z0-9]+)*)+" .   //domain
-	           "\\.[a-z]{2,}" .                    //sld, tld 
-	           "$", $email, $regs)) { return true;	}
-	else { return false; }
+	if(filter_var($email, FILTER_VALIDATE_EMAIL) === false) { return false; }
+	else { return true; } 
 
 } // end checkEmailAddress
 
@@ -3221,15 +3414,15 @@ function net2ftp_shutdown() {
 // -------------------------------------------------------------------------
 // Print a message to tell the user that the script was halted
 // -------------------------------------------------------------------------
-	$time_taken = timer();
-	$max_execution_time = @ini_get("max_execution_time");
+	$time_taken = timer(); // in milliseconds
+	$max_execution_time = @ini_get("max_execution_time"); // in seconds
 
 // - Check if the $max_execution_time is > 0, because on some PHP configs it is -1 (more
 // specifically: when PHP is run as CGI module).
 // - Check the time taken versus the maximum execution time, because on Windows + Apache
 // servers, the shutdown function is always called, even if the maximum execution time
 // was not reached.
-	if (($max_execution_time > 0) && ($time_taken > $max_execution_time - 1)) {
+	if (($max_execution_time > 0) && ($time_taken / 1000 > $max_execution_time - 1)) {
 		if (isStatusbarActive() == true && function_exists("setStatus") == true) {
 			setStatus(10, 10, __("Script halted")); 
 		}
@@ -3326,12 +3519,7 @@ $AttmFiles ... array containing the filenames to attach like array("file1","file
 	}
 
 // Check if the To email address is valid
-	if (!eregi( "^" .
-	           "[a-zA-Z0-9]+([_\.-][a-zA-Z0-9]+)*" .    //user
-	           "@" .
-	           "([a-zA-Z0-9]+([\.-][a-zA-Z0-9]+)*)+" .  //domain
-	           "\\.[a-zA-Z]{2,}" .                      //sld, tld 
-	           "$", $To, $regs)) { 
+	if (checkEmailAddress($To) === false) { 
 		$errormessage = __("The email address you have entered (%1\$s) does not seem to be valid.<br />Please enter an address in the format <b>username@domain.com</b>", $To); 
 		setErrorVars(false, $errormessage, debug_backtrace(), __FILE__, __LINE__);
 		return false;
@@ -3438,7 +3626,7 @@ function printDirFileProperties($number, $entry, $checkbox_hidden, $onclick) {
 //	$dirfilename_html = htmlspecialchars($dirfilename, ENT_QUOTES);
 
 // Print checkbox or hidden field
-	if (isset($entry["selectable"]) && $entry["selectable"] == "ok" && $checkbox_hidden == "checkbox") {
+	if ($checkbox_hidden == "checkbox") {
 		echo "<input type=\"checkbox\" name=\"list[$number][dirfilename]\" id=\"list_" . $number . "_dirfilename\" value=\"" . $entry["dirfilename_html"] . "\" $onclick />\n";
 	}
 	else {
@@ -3502,10 +3690,10 @@ function getSelectedEntries($list) {
 
 			if (isset($list[$i]["selectable"]) == false || $list[$i]["selectable"] != "ok" && 
 			($net2ftp_globals["state"] == "downloadfile" || $net2ftp_globals["state"] == "downloadzip" || 
-			$net2ftp_globals["state"] == "edit" || $net2ftp_globals["state"] == "findstring" || 
-			$net2ftp_globals["state"] == "unzip" || $net2ftp_globals["state"] == "view" || 
-			$net2ftp_globals["state"] == "zip" || 
-			$net2ftp_globals["state2"] == "copy" || $net2ftp_globals["state2"] == "move")) { 
+			$net2ftp_globals["state"] == "edit"          || $net2ftp_globals["state"] == "findstring" || 
+			$net2ftp_globals["state"] == "unzip"         || $net2ftp_globals["state"] == "view" || 
+			$net2ftp_globals["state"] == "zip"           || 
+			$net2ftp_globals["state2"] == "copy"         || $net2ftp_globals["state2"] == "move")) { 
 				continue; 
 			}
 
@@ -3601,16 +3789,16 @@ function formatFilesize($filesize) {
 		return $filesize . " B";
 	}
 	elseif($filesize < $mb) {
-		return round($filesize/$kb,2) . " kB";
+		return round($filesize/$kb,0) . " kB";
 	}
 	elseif($filesize < $gb) {
-		return round($filesize/$mb,2) . " MB";
+		return round($filesize/$mb,0) . " MB";
 	}
 	elseif($filesize < $tb) {
-		return round($filesize/$gb,2) . " GB";
+		return round($filesize/$gb,0) . " GB";
 	}
 	else {
-		return round($filesize/$tb,2) . " TB";
+		return round($filesize/$tb,0) . " TB";
 	}
 
 } // end formatFilesize
@@ -3649,7 +3837,7 @@ function tempnam2($dir, $prefix, $postfix) {
 
 // Create the temporary filename
 	do { 
-		$seed = substr(md5(microtime()), 0, 8);
+		$seed = substr(md5(microtime(true)), 0, 8);
 		$filename = $dir . $trailing_slash . $prefix . $seed . $postfix;
 		clearstatcache();
 		$file_exists = file_exists($filename);
@@ -3703,7 +3891,7 @@ function tempdir2($dir, $prefix, $postfix) {
 	$result = false;
 	$i = 0;
 	do { 
-		$seed = substr(md5(microtime()), 0, 8);
+		$seed = substr(md5(microtime(true)), 0, 8);
 		$filename = $dir . $trailing_slash . $prefix . $seed . $postfix;
 		$result = mkdir($filename);
 		$i = $i + 1;

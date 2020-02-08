@@ -1,7 +1,117 @@
 
 NET2FTP CHANGELOG
 
-April 2013: version 1.0
+July 2018: version 1.3
+======================
+
+Changes:
+- Improvement: skin has been optimized for mobile phones and tablets, and for right-to-left languages
+- Bugfix: default port number is now filled in on Login screen
+
+July 2018: version 1.2
+======================
+
+----------
+net2ftp version 1.1 contains:
+- HTML editor         CKEditor version 4.5.11       
+- HTML editor         TinyMCE version 4.4.3         
+- Code editor         Ace version ?                 
+- Zip library         pclzip version 2.8.2
+- Zip library         pcltar version 1.3
+- Zip library         zip.lib.php from PMA 4.5.4.1  
+- Calendar            Jscalendar version 1.0
+- Upload applet       JUpload version 5.0.8
+- Syntax highlighter  Luminous 0.7
+- Encryption wrapper  Stone PHP SafeCrypt
+- PHP SSH2            phpseclib 1.0.16               *updated*
+----------
+net2ftp uses icons from the icon sets:
+- nuvola
+----------
+net2ftp is translated into:
+- Arabic
+- Simplified Chinese
+- Traditonal Chinese
+- Czech 
+- Danish
+- Finnish
+- French
+- German
+- Hebrew
+- Hungarian
+- Italian
+- Japanese
+- Dutch
+- Polish
+- Portugese
+- Russian
+- Spanish
+- Swedish
+- Turkish
+- Ukrainian
+- Vietnamese
+----------
+
+Changes:
+- Improvement: net2ftp requests the user for consent before setting cookies
+
+
+
+June 2017: version 1.1
+======================
+
+----------
+net2ftp version 1.1 contains:
+- HTML editor         CKEditor version 4.5.11       *updated*
+- HTML editor         TinyMCE version 4.4.3         *updated*
+- Code editor         Ace version ?                 *updated*
+- Zip library         pclzip version 2.8.2
+- Zip library         pcltar version 1.3
+- Zip library         zip.lib.php from PMA 4.5.4.1  *updated*
+- Calendar            Jscalendar version 1.0
+- Upload applet       JUpload version 5.0.8
+- Syntax highlighter  Luminous 0.7
+- Encryption wrapper  Stone PHP SafeCrypt
+- PHP SSH2            phpseclib 1.0.6               *new*
+----------
+net2ftp uses icons from the icon sets:
+- nuvola
+----------
+net2ftp is translated into:
+- Arabic
+- Simplified Chinese
+- Traditonal Chinese
+- Czech 
+- Danish
+- Finnish
+- French
+- German
+- Hebrew
+- Hungarian
+- Italian
+- Japanese
+- Dutch
+- Polish
+- Portugese
+- Russian
+- Spanish
+- Swedish
+- Turkish
+- Ukrainian
+- Vietnamese
+----------
+
+Changes:
+- Improvement: net2ftp is now compatible with PHP version 7 and MariaDB
+- Improvement: added the option to connect to a server using FTP over SSH
+- Bugfix: background color of the "Up" row on the Browse screen now reverts back to the original color
+- Bugfix: HTTPS scheme is now correctly detected
+- Bugfix: files larger than the limit are not automatically selected any more
+- Bugfix: some actions could not be executed with the iphone skin
+
+
+
+March 2013: version 1.0
 =======================
 
 ----------

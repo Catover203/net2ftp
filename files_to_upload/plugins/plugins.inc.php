@@ -2,7 +2,7 @@
 
 //   -------------------------------------------------------------------------------
 //  |                  net2ftp: a web based FTP client                              |
-//  |              Copyright (c) 2003-2013 by David Gartner                         |
+//  |              Copyright (c) 2003-2017 by David Gartner                         |
 //  |                                                                               |
 //  | This program is free software; you can redistribute it and/or                 |
 //  | modify it under the terms of the GNU General Public License                   |
@@ -167,13 +167,13 @@ function getPluginProperties() {
 	$pluginProperties["ckeditor"]["printJavascript"]         = "<script type=\"text/javascript\" src=\"" . $net2ftp_globals["application_rootdir_url"] . "/plugins/ckeditor/ckeditor.js\"></script>\n";
 	$pluginProperties["ckeditor"]["printCss"]                = "";
 	$pluginProperties["ckeditor"]["printBodyOnload"]         = "";
-	$pluginProperties["ckeditor"]["printBodyOnload"]        .= "	CKEDITOR.replace( 'text_splitted[middle]' );\n";
+	$pluginProperties["ckeditor"]["printBodyOnload"]        .= "	CKEDITOR.replace( 'text_splitted_middle' );\n";
 	$pluginProperties["ckeditor"]["printBodyOnload"]        .= "	CKEDITOR.config.language = '" . $ckeditor_language . "';\n";
 	$pluginProperties["ckeditor"]["printBodyOnload"]        .= "	CKEDITOR.config.contentsLangDirection = '" . __("ltr") . "';\n";
 	$pluginProperties["ckeditor"]["printBodyOnload"]        .= "	CKEDITOR.config.height = 400;\n";
 
 // -------------------------------------------------------------------------
-// TinyMCE - http://tinymce.moxiecode.com/
+// TinyMCE - http://www.tinymce.com/
 // An HTML editor
 // -------------------------------------------------------------------------
 
@@ -215,47 +215,20 @@ function getPluginProperties() {
 	$pluginProperties["tinymce"]["browsers"][6]              = "Other";
 	$pluginProperties["tinymce"]["filename_extensions"][1]   = "html";
 	$pluginProperties["tinymce"]["includePhpFiles"][1]       = "";
-	$pluginProperties["tinymce"]["printJavascript"]          = "<script type=\"text/javascript\" src=\"" . $net2ftp_globals["application_rootdir_url"] . "/plugins/tinymce/tiny_mce.js\"></script>\n";
-	$pluginProperties["tinymce"]["printJavascript"]         .= "<script type=\"text/javascript\">\n";
-	$pluginProperties["tinymce"]["printJavascript"]         .= "	tinyMCE.init({\n";
-	$pluginProperties["tinymce"]["printJavascript"]         .= "		// General options\n";
-	$pluginProperties["tinymce"]["printJavascript"]         .= "		mode : \"exact\",\n";
-	$pluginProperties["tinymce"]["printJavascript"]         .= "		language : \"" . $tinymce_language . "\",\n";
-	$pluginProperties["tinymce"]["printJavascript"]         .= "		elements : \"text_splitted[middle]\",\n";
-	$pluginProperties["tinymce"]["printJavascript"]         .= "		theme : \"advanced\",\n";
-	$pluginProperties["tinymce"]["printJavascript"]         .= "		plugins : \"pagebreak,style,layer,table,save,advhr,advimage,advlink,emotions,iespell,inlinepopups,insertdatetime,preview,media,searchreplace,print,contextmenu,paste,directionality,fullscreen,noneditable,visualchars,nonbreaking,xhtmlxtras,template,wordcount,advlist,autosave\",\n";
-	$pluginProperties["tinymce"]["printJavascript"]         .= "		// Theme options\n";
-	$pluginProperties["tinymce"]["printJavascript"]         .= "		theme_advanced_buttons1 : \"save,newdocument,|,bold,italic,underline,strikethrough,|,justifyleft,justifycenter,justifyright,justifyfull,styleselect,formatselect,fontselect,fontsizeselect\",\n";
-	$pluginProperties["tinymce"]["printJavascript"]         .= "		theme_advanced_buttons2 : \"cut,copy,paste,pastetext,pasteword,|,search,replace,|,bullist,numlist,|,outdent,indent,blockquote,|,undo,redo,|,link,unlink,anchor,image,cleanup,help,code,|,insertdate,inserttime,preview,|,forecolor,backcolor\",\n";
-	$pluginProperties["tinymce"]["printJavascript"]         .= "		theme_advanced_buttons3 : \"tablecontrols,|,hr,removeformat,visualaid,|,sub,sup,|,charmap,emotions,iespell,media,advhr,|,print,|,ltr,rtl,|,fullscreen\",\n";
-	$pluginProperties["tinymce"]["printJavascript"]         .= "		theme_advanced_buttons4 : \"insertlayer,moveforward,movebackward,absolute,|,styleprops,|,cite,abbr,acronym,del,ins,attribs,|,visualchars,nonbreaking,template,pagebreak,restoredraft\",\n";
-	$pluginProperties["tinymce"]["printJavascript"]         .= "		theme_advanced_toolbar_location : \"top\",\n";
-	$pluginProperties["tinymce"]["printJavascript"]         .= "		theme_advanced_toolbar_align : \"left\",\n";
-	$pluginProperties["tinymce"]["printJavascript"]         .= "		theme_advanced_statusbar_location : \"bottom\",\n";
-	$pluginProperties["tinymce"]["printJavascript"]         .= "		theme_advanced_resizing : true,\n";
-	$pluginProperties["tinymce"]["printJavascript"]         .= "		// Example content CSS (should be your site CSS)\n";
-	$pluginProperties["tinymce"]["printJavascript"]         .= "		content_css : \"css/content.css\",\n";
-	$pluginProperties["tinymce"]["printJavascript"]         .= "		// Drop lists for link/image/media/template dialogs\n";
-	$pluginProperties["tinymce"]["printJavascript"]         .= "		template_external_list_url : \"lists/template_list.js\",\n";
-	$pluginProperties["tinymce"]["printJavascript"]         .= "		external_link_list_url : \"lists/link_list.js\",\n";
-	$pluginProperties["tinymce"]["printJavascript"]         .= "		external_image_list_url : \"lists/image_list.js\",\n";
-	$pluginProperties["tinymce"]["printJavascript"]         .= "		media_external_list_url : \"lists/media_list.js\",\n";
-	$pluginProperties["tinymce"]["printJavascript"]         .= "		// Style formats\n";
-	$pluginProperties["tinymce"]["printJavascript"]         .= "		style_formats : [\n";
-	$pluginProperties["tinymce"]["printJavascript"]         .= "			{title : 'Bold text', inline : 'b'},\n";
-	$pluginProperties["tinymce"]["printJavascript"]         .= "			{title : 'Red text', inline : 'span', styles : {color : '#ff0000'}},\n";
-	$pluginProperties["tinymce"]["printJavascript"]         .= "			{title : 'Red header', block : 'h1', styles : {color : '#ff0000'}},\n";
-	$pluginProperties["tinymce"]["printJavascript"]         .= "			{title : 'Example 1', inline : 'span', classes : 'example1'},\n";
-	$pluginProperties["tinymce"]["printJavascript"]         .= "			{title : 'Example 2', inline : 'span', classes : 'example2'},\n";
-	$pluginProperties["tinymce"]["printJavascript"]         .= "			{title : 'Table styles'},\n";
-	$pluginProperties["tinymce"]["printJavascript"]         .= "			{title : 'Table row 1', selector : 'tr', classes : 'tablerow1'}\n";
-	$pluginProperties["tinymce"]["printJavascript"]         .= "		],\n";
-	$pluginProperties["tinymce"]["printJavascript"]         .= "		// Replace values for the template plugin\n";
-	$pluginProperties["tinymce"]["printJavascript"]         .= "		template_replace_values : {\n";
-	$pluginProperties["tinymce"]["printJavascript"]         .= "			username : \"Some User\",\n";
-	$pluginProperties["tinymce"]["printJavascript"]         .= "			staffid : \"991234\"\n";
-	$pluginProperties["tinymce"]["printJavascript"]         .= "		}\n";
-	$pluginProperties["tinymce"]["printJavascript"]         .= "	});\n";
+	$pluginProperties["tinymce"]["printJavascript"]          = "<script type=\"text/javascript\" src=\"" . $net2ftp_globals["application_rootdir_url"] . "/plugins/tinymce/tinymce.min.js\"></script>\n";
+	$pluginProperties["tinymce"]["printJavascript"]         .= "<script type=\"text/javascript\">";
+	$pluginProperties["tinymce"]["printJavascript"]         .= "tinymce.init({\n";
+	$pluginProperties["tinymce"]["printJavascript"]         .= "    selector: \"textarea#text_splitted_middle\",\n";
+	$pluginProperties["tinymce"]["printJavascript"]         .= "    theme: \"modern\",\n";
+	$pluginProperties["tinymce"]["printJavascript"]         .= "    plugins: [\"advlist autolink lists link image charmap print preview hr anchor pagebreak searchreplace wordcount visualblocks visualchars code fullscreen insertdatetime media nonbreaking save table contextmenu directionality emoticons template paste textcolor colorpicker textpattern\"],\n";
+	$pluginProperties["tinymce"]["printJavascript"]         .= "    toolbar1: \"insertfile undo redo | styleselect | bold italic | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | link image\",\n";
+	$pluginProperties["tinymce"]["printJavascript"]         .= "    toolbar2: \"print preview media | forecolor backcolor emoticons\",\n";
+	$pluginProperties["tinymce"]["printJavascript"]         .= "    image_advtab: true,\n";
+	$pluginProperties["tinymce"]["printJavascript"]         .= "    templates: [\n";
+	$pluginProperties["tinymce"]["printJavascript"]         .= "        {title: 'Test template 1', content: 'Test 1'},\n";
+	$pluginProperties["tinymce"]["printJavascript"]         .= "        {title: 'Test template 2', content: 'Test 2'}\n";
+	$pluginProperties["tinymce"]["printJavascript"]         .= "    ]\n";
+	$pluginProperties["tinymce"]["printJavascript"]         .= "});\n";
 	$pluginProperties["tinymce"]["printJavascript"]         .= "</script>\n";
 	$pluginProperties["tinymce"]["printCss"]                 = "";
 	$pluginProperties["tinymce"]["printBodyOnload"]          = "";

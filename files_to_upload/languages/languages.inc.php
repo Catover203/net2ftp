@@ -2,7 +2,7 @@
 
 //   -------------------------------------------------------------------------------
 //  |                  net2ftp: a web based FTP client                              |
-//  |              Copyright (c) 2003-2013 by David Gartner                         |
+//  |              Copyright (c) 2003-2017 by David Gartner                         |
 //  |                                                                               |
 //  | This program is free software; you can redistribute it and/or                 |
 //  | modify it under the terms of the GNU General Public License                   |
@@ -26,16 +26,14 @@ function getLanguageArray() {
 // Use the ISO 639 code described here: http://www.w3.org/WAI/ER/IG/ert/iso639.htm
 // --------------
 
-	$languageArray["ar"]["name"] = "Arabic";
-	$languageArray["ar"]["file"] = "ar.inc.php";
-	$languageArray["ar-utf"]["name"] = "Arabic UTF-8";
-	$languageArray["ar-utf"]["file"] = "ar-utf.inc.php";
-	$languageArray["zh"]["name"] = "Simplified Chinese";
-	$languageArray["zh"]["file"] = "zh.inc.php";
+	$languageArray["ar"]["name"] = "Arabic UTF-8";
+	$languageArray["ar"]["file"] = "ar-utf.inc.php";
+	$languageArray["zh"]["name"] = "Simplified Chinese UTF-8";
+	$languageArray["zh"]["file"] = "zh-utf.inc.php";
 	$languageArray["tc"]["name"] = "Traditional Chinese";
 	$languageArray["tc"]["file"] = "tc.inc.php";
-	$languageArray["cs"]["name"] = "Czech";
-	$languageArray["cs"]["file"] = "cs.inc.php";
+	$languageArray["cs"]["name"] = "Czech UTF-8";
+	$languageArray["cs"]["file"] = "cs-utf.inc.php";
 	$languageArray["da"]["name"] = "Danish UTF-8";
 	$languageArray["da"]["file"] = "da-utf.inc.php";
 	$languageArray["nl"]["name"] = "Dutch";
@@ -44,7 +42,7 @@ function getLanguageArray() {
 	$languageArray["en"]["file"] = "en.inc.php";
 	$languageArray["en-utf"]["name"] = "English UTF-8";
 	$languageArray["en-utf"]["file"] = "en-utf.inc.php";
-	$languageArray["fr"]["name"] = "French";
+	$languageArray["fr"]["name"] = "French UTF-8";
 	$languageArray["fr"]["file"] = "fr.inc.php";
 	$languageArray["de"]["name"] = "German";
 	$languageArray["de"]["file"] = "de.inc.php";
@@ -74,8 +72,8 @@ function getLanguageArray() {
 	$languageArray["tr"]["file"] = "tr.inc.php";
 	$languageArray["ua"]["name"] = "Ukrainian";
 	$languageArray["ua"]["file"] = "ua.inc.php";
-	$languageArray["vi"]["name"] = "Vietnamese";
-	$languageArray["vi"]["file"] = "vi.inc.php";
+	$languageArray["vi"]["name"] = "Vietnamese UTF-8";
+	$languageArray["vi"]["file"] = "vi-utf.inc.php";
 
 	return $languageArray;
 
@@ -218,7 +216,7 @@ function __() {
 
 // Check if the message with that $messagename exists
 	if (@array_key_exists($messagename, $net2ftp_messages)) { $string_with_percents = $net2ftp_messages[$messagename]; }
-	else { return "MESSAGE NOT FOUND"; }
+	else { return "MESSAGE NOT FOUND [$messagename]"; }
 
 	$sprintf_argument = "\$translated_string = sprintf(\$string_with_percents";
 

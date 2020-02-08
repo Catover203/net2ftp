@@ -2,7 +2,7 @@
 
 //   -------------------------------------------------------------------------------
 //  |                  net2ftp: a web based FTP client                              |
-//  |              Copyright (c) 2003-2013 by David Gartner                         |
+//  |              Copyright (c) 2003-2017 by David Gartner                         |
 //  |                                                                               |
 //  | This program is free software; you can redistribute it and/or                 |
 //  | modify it under the terms of the GNU General Public License                   |
@@ -26,13 +26,33 @@ function net2ftp_module_sendHttpHeaders() {
 // This function sends HTTP headers
 // --------------
 
-//	global $net2ftp_settings, $net2ftp_globals, $net2ftp_messages, $net2ftp_result;
+	global $net2ftp_globals;
 
-// -------------------------------------------------------------------------
-// Send XHTML header
-// -------------------------------------------------------------------------
-//	header("Content-type: application/xhtml+xml; charset=" . __("iso-8859-1"));
-	
+	$cookie_expire = time()+60*60*24*30; // 30 days
+
+// Consent cookies
+// Set by net2ftp login, login_small and browse modules, and removed by net2ftp clearcookies module
+	setcookie("net2ftpcookie_consent_necessary",           $net2ftp_globals["consent_necessary"],           $cookie_expire);
+	setcookie("net2ftpcookie_consent_preferences",         $net2ftp_globals["consent_preferences"],         $cookie_expire);
+	setcookie("net2ftpcookie_consent_statistics",          $net2ftp_globals["consent_statistics"],          $cookie_expire);
+	setcookie("net2ftpcookie_consent_personalized_ads",    $net2ftp_globals["consent_personalized_ads"],    $cookie_expire);
+	setcookie("net2ftpcookie_consent_nonpersonalized_ads", $net2ftp_globals["consent_nonpersonalized_ads"], $cookie_expire);
+
+// Necessary cookies
+// e.g. for Google Captcha
+
+// Preferences
+// Set by net2ftp browse module, and removed by net2ftp clearcookies module
+
+// Statistics
+// e.g. for Google Analytics
+
+// Personalized ads
+// e.g. for Google Adsense
+
+// Nonpersonalized ads
+// e.g. for Google Adsense
+
 } // end net2ftp_sendHttpHeaders
 
 // **                                                                                  **
@@ -58,72 +78,179 @@ function net2ftp_module_printJavascript() {
 	global $net2ftp_settings, $net2ftp_globals;
 
 // -------------------------------------------------------------------------
-// Include the embed.js file for openlaszlo, and nothing else
+// Google Captcha
+// See also more code below to allow 3 captchas on the same page
 // -------------------------------------------------------------------------
-	if ($net2ftp_globals["skin"] == "openlaszlo") {
-//		echo "<script type=\"text/javascript\" src=\"". $net2ftp_globals["application_rootdir_url"] . "/skins/openlaszlo/lps/includes/embed-compressed.js\"></script>\n";
+
+// Recaptcha (special code to allow 3 on the same page)
+// http://mycodde.blogspot.ch/2014/12/multiple-recaptcha-demo-same-page.html
+	if ($net2ftp_settings["use_captcha"] == "yes") {
+		echo "<script src=\"https://www.google.com/recaptcha/api.js?onload=myCallBack&render=explicit\" async defer></script>\n";
 	}
 
 // -------------------------------------------------------------------------
-// For the other skins, do print more Javascript functions
+// Google adsense
 // -------------------------------------------------------------------------
-	else {
+	if ($net2ftp_settings["show_ads"] == "yes") {
+		echo "<script async src=\"https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js\"></script>\n";
+		echo "<script>\n";
+		echo "  (adsbygoogle = window.adsbygoogle || []).push({\n";
+		echo "    google_ad_client: \"ca-pub-5170524795218203\",\n";
+		echo "    enable_page_level_ads: true\n";
+		echo "  });\n";
+		echo "</script>\n";
+	}
+
+// -------------------------------------------------------------------------
+// Code
+// -------------------------------------------------------------------------
+
+	echo "<script type=\"text/javascript\"><!--\n";	
+
+// Recaptcha (special code to allow 3 on the same page)
+// http://mycodde.blogspot.ch/2014/12/multiple-recaptcha-demo-same-page.html
+	if ($net2ftp_settings["use_captcha"] == "yes") {
+		echo "var recaptcha1, recaptcha2, recaptcha3;\n";
+		echo "var myCallBack = function() {\n";
+		echo "	recaptcha1 = grecaptcha.render('recaptcha1', {\n";
+		echo "		'sitekey' : '" . $net2ftp_settings["recaptcha_sitekey"] . "',\n";
+		echo "		'theme' : 'light'\n";
+		echo "	});\n";
+		echo "	recaptcha2 = grecaptcha.render('recaptcha2', {\n";
+		echo "		'sitekey' : '" . $net2ftp_settings["recaptcha_sitekey"] . "',\n";
+		echo "		'theme' : 'light'\n";
+		echo "	});\n";
+		echo "	recaptcha3 = grecaptcha.render('recaptcha3', {\n";
+		echo "		'sitekey' : '" . $net2ftp_settings["recaptcha_sitekey"] . "',\n";
+		echo "		'theme' : 'light'\n";
+		echo "	});\n";
+		echo "};\n";
+	}
 
 // Check if the user did enter an FTP server and username
-		echo "<script type=\"text/javascript\"><!--\n";	
+	echo "function CheckInput(form) {\n";
 
-		echo "function CheckInput(form) {\n";
-		echo "	var u,p1,p2,e;\n";
-		echo "	s=form.ftpserver.value;\n";
-		echo "	u=form.username.value;\n";
-		echo "	p=form.password.value;\n";
+	echo "	if (form.ftpserver.value.length == 0) {\n";
+	echo "		form.ftpserver.focus();\n";
+	echo "		alert(\"" . __("Please enter an FTP server.") . "\");\n";
+	echo "		return false;\n";
+	echo "	}\n";
+	echo "	if (form.ftpserver.value.length > 254) {\n";
+	echo "		form.ftpserver.focus();\n";
+	echo "		alert(\"" . __("FTP server name is too long; please enter less than 255 characters.") . "\");\n";
+	echo "		return false;\n";
+	echo "	}\n";
 
-		echo "	if (s.length==0) {\n";
-		echo "		form.ftpserver.focus();\n";
-		echo "		alert(\"" . __("Please enter an FTP server.") . "\");\n";
-		echo "		return false;\n";
-		echo "	}\n";
+	echo "	if (form.username.value.length == 0) {\n";
+	echo "		form.username.focus();\n";
+	echo "		alert(\"" . __("Please enter a username.") . "\");\n";
+	echo "		return false;\n";
+	echo "	}\n";
+	echo "	if (form.username.value.length > 254) {\n";
+	echo "		form.username.focus();\n";
+	echo "		alert(\"" . __("Username is too long; please enter less than 255 characters.") . "\");\n";
+	echo "		return false;\n";
+	echo "	}\n";
 
-		echo "	if (u.length==0) {\n";
-		echo "		form.username.focus();\n";
-		echo "		alert(\"" . __("Please enter a username.") . "\");\n";
-		echo "		return false;\n";
-		echo "	}\n";
+//	echo "	if (form.password.value.length == 0) {\n";
+//	echo "		form.password.focus();\n";
+//	echo "		alert(\"" . __("Please enter a password.") . "\");\n";
+//	echo "		return false;\n";
+//	echo "	}\n";
 
-//		echo "	if (p.length==0) {\n";
-//		echo "		form.password.focus();\n";
-//		echo "		alert(\"" . __("Please enter a password.") . "\");\n";
-//		echo "		return false;\n";
-//		echo "	}\n";
+	echo "	if (form.user_email.value.length == 0) {\n";
+	echo "		form.user_email.focus();\n";
+	echo "		alert(\"" . __("Please enter your email address.") . "\");\n";
+	echo "		return false;\n";
+	echo "	}\n";
+	echo "	if (form.user_email.value.length > 254) {\n";
+	echo "		form.user_email.focus();\n";
+	echo "		alert(\"" . __("Email is too long; please enter less than 255 characters.") . "\");\n";
+	echo "		return false;\n";
+	echo "	}\n";
 
-		echo "	return true;\n";
-		echo "}\n";
+	$privacy_check = "";
+	for ($i=1; $i<=10; $i++) {
+		if (isset($net2ftp_settings["privacy_policy_" . $i]) && $net2ftp_settings["privacy_policy_" . $i] != "") { 
+			$privacy_check .= " || form.privacy" . $i . ".checked == false"; 
+		} // end if
+	} // end for
+	$privacy_check = substr($privacy_check, 4, strlen($privacy_check)-4);
 
-// Anonymous login
-		echo "function do_anonymous(form) {\n";
-		echo "	var checked = form.anonymous.checked;\n";
-		echo "	if (checked == true) {\n";
-		echo "		vars_defined = 'true';\n";
-		echo "		last_username = form.username.value;\n";
-		echo "		last_password = form.password.value;\n";
-		echo "		form.username.value = \"anonymous\";\n";
-		echo "		form.password.value = \"user@net2ftp.com\";\n";
-		echo "	} else {\n";
-		echo "		form.username.value = last_username;\n";
-		echo "		form.password.value = last_password;\n";
-		echo "	}\n";
-		echo "	return true;\n";
-		echo "}\n";
+	echo "	if (" . $privacy_check . ") {\n";
+	echo "		alert(\"" . __("Please agree to all privacy policies.") . "\");\n";
+	echo "		return false;\n";
+	echo "	}\n";
+
+	echo "	return true;\n";
+	echo "}\n";
+
+// Get server's fingerprint
+	echo "function GetFingerprint(form) {\n";
+	echo "	result = CheckInput(form);\n";
+	echo "	if (result == true) {\n";
+	echo "		form.sshfingerprint.value = \"" . __("Getting fingerprint, please wait...") . "\";\n";
+	echo "		var http = new XMLHttpRequest();\n";
+	echo "		var url = \"index.xml.php\";\n";
+	echo "		var params = \"protocol=FTP-SSH&ftpserver=\" + form.ftpserver.value + \"&state=serverfingerprint\";\n";
+	echo "		http.open(\"POST\", url, true);\n";
+//Send the proper header information along with the request
+	echo "		http.setRequestHeader(\"Content-type\", \"application/x-www-form-urlencoded\");\n";
+//Call a function when the state changes
+	echo "		http.onreadystatechange = function() {\n";
+	echo "			if(http.readyState == 4 && http.status == 200) {\n";
+	echo "	        		form.sshfingerprint.value = http.responseText;\n";
+	echo "			}\n";
+	echo "			else {\n";
+	echo "				form.sshfingerprint.value = \"" . __("Could not get fingerprint") . "\";\n";
+	echo "			}\n";
+	echo "		}\n";
+	echo "		http.send(params);\n";
+	echo "	}\n";
+	echo "}\n";
+
+// Protocol drop-down box: 
+// When changing the protocol, fill in the default port number of that protocol
+	echo "function do_protocol(form) {\n";
+	echo "	var protocol = form.protocol.value;\n";
+	echo "	if (protocol == \"FTP\") {\n";
+	echo "		form.ftpserverport.value = \"21\"\n";
+	echo "	}\n";
+	echo "	else if (protocol == \"FTP-SSH\") {\n";
+	echo "		form.ftpserverport.value = \"22\";\n";
+	echo "	}\n";
+	echo "	else if (protocol == \"FTP-SSL\") {\n";
+	echo "		form.ftpserverport.value = \"990\";\n";
+	echo "	}\n";
+	echo "	return true;\n";
+	echo "}\n";
+
+// Anonymous checkbox:
+// - When setting the flag: fill in username "anonymous" and password "user@net2ftp.com"
+// - When unsetting the flag: restore the username and password which were previously filled in
+	echo "function do_anonymous(form) {\n";
+	echo "	var checked = form.anonymous.checked;\n";
+	echo "	if (checked == true) {\n";
+	echo "		last_username = form.username.value;\n";
+	echo "		last_password = form.password.value;\n";
+	echo "		form.username.value = \"anonymous\";\n";
+	echo "		form.password.value = \"user@net2ftp.com\";\n";
+	echo "	} else {\n";
+	echo "		form.username.value = last_username;\n";
+	echo "		form.password.value = last_password;\n";
+	echo "	}\n";
+	echo "	return true;\n";
+	echo "}\n";
 	
 // Clear Cookies
-		echo "function ClearCookies() {\n";
-		echo "	document.forms['LoginForm'].state.value='clearcookies';\n";
-		echo "	document.forms['LoginForm'].state2.value='';\n";
-		echo "	document.forms['LoginForm'].submit();\n";
-		echo "}\n";
-		echo "//--></script>\n";
+	echo "function ClearCookies() {\n";
+	echo "	document.forms['LoginForm'].state.value='clearcookies';\n";
+	echo "	document.forms['LoginForm'].state2.value='';\n";
+	echo "	document.forms['LoginForm'].submit();\n";
+	echo "}\n";
 
-	} // end if else
+
+	echo "//--></script>\n";
 
 } // end net2ftp_printJavascript
 
@@ -149,7 +276,7 @@ function net2ftp_module_printCss() {
 
 	global $net2ftp_settings, $net2ftp_globals;
 
-	echo "<link rel=\"stylesheet\" type=\"text/css\" href=\"". $net2ftp_globals["application_rootdir_url"] . "/skins/" . $net2ftp_globals["skin"] . "/css/main.css.php?ltr=" . __("ltr") . "&amp;image_url=" . urlEncode2($net2ftp_globals["image_url"]) . "\" />\n";
+//	echo "<link rel=\"stylesheet\" type=\"text/css\" href=\"". $net2ftp_globals["application_rootdir_url"] . "/skins/" . $net2ftp_globals["skin"] . "/css/main.css.php?ltr=" . __("ltr") . "&amp;image_url=" . urlEncode2($net2ftp_globals["image_url"]) . "\" />\n";
 
 } // end net2ftp_printCssInclude
 
@@ -206,6 +333,12 @@ function net2ftp_module_printBody() {
 // -------------------------------------------------------------------------
 // Variables
 // -------------------------------------------------------------------------
+
+// ------------------------------------
+// Header
+// ------------------------------------
+	if ($net2ftp_globals["browser_platform"] == "Mobile")	{ $header_height = "50px"; }
+	else 									{ $header_height = "180px"; }
 
 // ------------------------------------
 // Title
@@ -280,24 +413,40 @@ function net2ftp_module_printBody() {
 		$ftpserverport["inputType"] = "text";
 
 		// Prefill with the previous input value
-		if ($net2ftp_globals["ftpserverport"] != "") { $ftpserverport["value"] = htmlEncode2($net2ftp_globals["ftpserverport"]); }
-
-		// Prefill with the cookie value - only if it is different from empty
-		elseif ($net2ftp_globals["cookie_ftpserverport"] != "") { 
-			$ftpserverport["value"] = htmlEncode2($net2ftp_globals["cookie_ftpserverport"]); 
+		if ($net2ftp_globals["ftpserverport"] != "") { 
+			$ftpserverport["defaultvalue_ftp"] = htmlEncode2($net2ftp_globals["ftpserverport"]); 
+			$ftpserverport["defaultvalue_ssh"] = htmlEncode2($net2ftp_globals["ftpserverport"]); 
+			$ftpserverport["defaultvalue_ssl"] = htmlEncode2($net2ftp_globals["ftpserverport"]); 
 		}
-
-		// Else, fill in 21, which is the default FTP port
 		else { 
-			$ftpserverport["value"] = 21; 
+		// Prefill with the cookie value - only if it is different from empty
+			if ($net2ftp_globals["cookie_ftpserverport_ftp"] != "") { $ftpserverport["defaultvalue_ftp"] = htmlEncode2($net2ftp_globals["cookie_ftpserverport_ftp"]); }
+			else 									  { $ftpserverport["defaultvalue_ftp"] = 21; }
+			if ($net2ftp_globals["cookie_ftpserverport_ssh"] != "") { $ftpserverport["defaultvalue_ssh"] = htmlEncode2($net2ftp_globals["cookie_ftpserverport_ssh"]); }
+			else 									  { $ftpserverport["defaultvalue_ssh"] = 22; }
+			if ($net2ftp_globals["cookie_ftpserverport_ssl"] != "") { $ftpserverport["defaultvalue_ssl"] = htmlEncode2($net2ftp_globals["cookie_ftpserverport_ssl"]); }
+			else 									  { $ftpserverport["defaultvalue_ssl"] = 990;}
 		}
 	}
 	
 	else {
 		$ftpserverport["inputType"] = "hidden";
-		$ftpserverport["value"] = $net2ftp_settings["allowed_ftpserverport"];
+		$ftpserverport["defaultvalue_ftp"] = $net2ftp_settings["allowed_ftpserverport"];
+		$ftpserverport["defaultvalue_ssh"] = $net2ftp_settings["allowed_ftpserverport"];
+		$ftpserverport["defaultvalue_ssl"] = $net2ftp_settings["allowed_ftpserverport"];
 	}
 	
+
+// ------------------------------------
+// SSH fingerprint
+// ------------------------------------
+
+	// Prefill with the previous input value
+	if ($net2ftp_globals["sshfingerprint"] != "") { $sshfingerprint = htmlEncode2($net2ftp_globals["sshfingerprint"]); }
+
+	// Prefill with the cookie value
+    	else { $sshfingerprint = htmlEncode2($net2ftp_globals["cookie_sshfingerprint"]); }
+
 
 // ------------------------------------
 // Username
@@ -338,10 +487,16 @@ function net2ftp_module_printBody() {
 // Protocol
 // ------------------------------------
 
-	$protocol["inputType"] = "hidden";
-	$protocol["list"][1] = "FTP";
-	if (function_exists("ssh2_connect") == true)    { $protocol["list"][2] = "FTP over SSH2"; $protocol["inputType"] = "select"; }
-	if (function_exists("ftp_ssl_connect") == true) { $protocol["list"][3] = "FTP with SSL";  $protocol["inputType"] = "select"; }
+	$protocol["inputType"] = "select"; 
+	$protocol["list"][1]["name"]     = "FTP";
+	$protocol["list"][1]["value"]    = "FTP";
+	$protocol["list"][1]["selected"] = "selected"; 
+	$protocol["list"][2]["name"]     = "FTP over SSH2";
+	$protocol["list"][2]["value"]    = "FTP-SSH";
+	$protocol["list"][2]["selected"] = ""; 
+	if (function_exists("ftp_ssl_connect") == true) { 
+		array_push($protocol["list"], array("name" => "FTP with SSL", "value" => "FTP-SSL" ,"selected" => ""));
+	}
 
 // ------------------------------------
 // Language
@@ -386,11 +541,32 @@ function net2ftp_module_printBody() {
 	$admin_url = $net2ftp_globals["action_url"] . "?state=login_small&amp;state2=admin&amp;go_to_state=admin";
 
 // ------------------------------------
+// User email 
+// ------------------------------------
+	if ($net2ftp_globals["cookie_user_email"] != "" && $net2ftp_globals["cookie_user_email"] != "invalid_user_email") { 
+		$user_email = $net2ftp_globals["cookie_user_email"]; 
+	}
+	else { 
+		$user_email = ""; 
+	}
+
+// ------------------------------------
+// Privacy policies
+// ------------------------------------
+	for ($i=1; $i<=10; $i++) {
+		if (isset($net2ftp_settings["privacy_policy_" . $i]) && $net2ftp_globals["cookie_privacy" . $i] == 1) { 
+			$privacy_checked[$i] = "checked";
+		} // end if
+		else {
+			$privacy_checked[$i] = "";
+		}
+	} // end for
+
+// ------------------------------------
 // Focus
 // ------------------------------------
 	if   ($net2ftp_settings["allowed_ftpservers"][1] == "ALL") { $focus = "ftpserver"; }
 	else                                                       { $focus = "username"; }
-
 
 // -------------------------------------------------------------------------
 // Print the output

@@ -2,7 +2,7 @@
 
 //   -------------------------------------------------------------------------------
 //  |                  net2ftp: a web based FTP client                              |
-//  |              Copyright (c) 2003-2013 by David Gartner                         |
+//  |              Copyright (c) 2003-2017 by David Gartner                         |
 //  |                                                                               |
 //  | This program is free software; you can redistribute it and/or                 |
 //  | modify it under the terms of the GNU General Public License                   |
@@ -17,36 +17,37 @@
 // **                                                                                  **
 // **                                                                                  **
 
-function connect2db() {
+function net2ftp_connect_db() {
 
 // --------------
-// This function logs user accesses to the site
+// This function connects to and select a MySQL database
 // --------------
 
 // -------------------------------------------------------------------------
 // Global variables
 // -------------------------------------------------------------------------
-	global $net2ftp_settings;
+	global $net2ftp_settings, $net2ftp_globals;
 
-	$mydb = mysql_connect($net2ftp_settings["dbserver"], $net2ftp_settings["dbusername"], $net2ftp_settings["dbpassword"]);
+	$mydb = mysqli_connect($net2ftp_settings["dbserver"], $net2ftp_settings["dbusername"], $net2ftp_settings["dbpassword"]);
 	if ($mydb == false) { 
 		setErrorVars(false, __("Unable to connect to the MySQL database. Please check your MySQL database settings in net2ftp's configuration file settings.inc.php."), debug_backtrace(), __FILE__, __LINE__);
 		return false;
 	}
 
-	$result2 = mysql_select_db($net2ftp_settings["dbname"]);
+	$result2 = mysqli_select_db($mydb, $net2ftp_settings["dbname"]);
 	if ($result2 == false) { 
 		setErrorVars(false, __("Unable to select the MySQL database. Please check your MySQL database settings in net2ftp's configuration file settings.inc.php."), debug_backtrace(), __FILE__, __LINE__);
 		return false;
 	}
 
-	return $mydb;
+	$net2ftp_globals["mysqli_link"] = $mydb;
 
-} // End connect2db
+} // End net2ftp_connect_db
 
 // **                                                                                  **
 // **                                                                                  **
 // **************************************************************************************
 // **************************************************************************************
+
 
 ?>

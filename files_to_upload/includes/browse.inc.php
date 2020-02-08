@@ -2,7 +2,7 @@
 
 //   -------------------------------------------------------------------------------
 //  |                  net2ftp: a web based FTP client                              |
-//  |              Copyright (c) 2003-2013 by David Gartner                         |
+//  |              Copyright (c) 2003-2017 by David Gartner                         |
 //  |                                                                               |
 //  | This program is free software; you can redistribute it and/or                 |
 //  | modify it under the terms of the GNU General Public License                   |
@@ -44,85 +44,98 @@ function ftp_getlist($conn_id, $directory) {
 
 // -------------------------------------------------------------------------
 // Step 1: Chdir to the directory and get the current directory
+// Only for FTP and FTP-SSL (not for FTP-SSH)
 // -------------------------------------------------------------------------
+
+	if ($net2ftp_globals["protocol"] == "FTP" || $net2ftp_globals["protocol"] == "FTP-SSL") {
 
 // ----------------------------------------------
 // Step 1a - Directory is "/"
 // Chdir to the directory because otherwise the ftp_rawlist does not work on some FTP servers
 // ----------------------------------------------
-	if ($directory == "/") { 
-		$result1a = ftp_chdir($conn_id, $directory);	
-	}
+		if ($directory == "/") { 
+			$result1a = ftp_chdir($conn_id, $directory);	
+		}
 
 // ----------------------------------------------
 // Step 1b - Directory is ""
 // If the directory is "" then the user can be directed to his home directory
 // We don't know which directory it is, so we request it from the FTP server
 // ----------------------------------------------
-	elseif ($directory == "") { 
-		$result1b = ftp_chdir($conn_id, $directory);
-		$directory = ftp_pwd($conn_id);
-	}
+		elseif ($directory == "") { 
+//			$result1b = ftp_chdir($conn_id, "");
+			$directory = ftp_pwd($conn_id);
+		}
 
 // ----------------------------------------------
 // Step 1c - Directory is not "/" or ""
 // ----------------------------------------------
-	else {
+		else {
 
 // 1c1 - Replace \' by \\' to be able to delete directories with names containing \'
-		$directory1 = str_replace("\'", "\\\'", $directory); 
+			$directory1 = str_replace("\'", "\\\'", $directory); 
 
 // 1c2 - Chdir to the directory
 // This is to check if the directory exists, but also because otherwise
 // the ftp_rawlist does not work on some FTP servers.
-		$result1c = ftp_chdir($conn_id, $directory1);
+			$result1c = ftp_chdir($conn_id, $directory1);
 
 // 1c3 - If the first ftp_chdir returns false, try a second time without the leading /
 // Some Windows FTP servers do not work when you use a leading /
-		if ($result1c == false) {
-			$directory2 = stripDirectory($directory1);
-			$result2 = ftp_chdir($conn_id, $directory2);
+			if ($result1c == false) {
+				$directory2 = stripDirectory($directory1);
+				$result2 = ftp_chdir($conn_id, $directory2);
 
 // 1c3 - If the second ftp_chdir also does not work:
-//           For the Browse screen ==> go to the user's root directory
-//           For all other screens ==> return error
-			if ($result2 == false) {
-				if ($net2ftp_globals["state"] == "browse") {
-					$rootdirectory = getRootdirectory();
+// 	For the Browse screen ==> go to the user's root directory
+// 	For all other screens ==> return error
+				if ($result2 == false) {
+					if ($net2ftp_globals["state"] == "browse") {
+						$rootdirectory = "/";
 
-					// User's root directory is different from the current directory, so switch to it
-					if ($directory != $rootdirectory) {
-						$warnings .= __("The directory <b>%1\$s</b> does not exist or could not be selected, so the directory <b>%2\$s</b> is shown instead.", $directory, $rootdirectory);
-						$directory = $rootdirectory;
-						$result3 = ftp_chdir($conn_id, $directory);
+						// User's root directory is different from the current directory, so switch to it
+						if ($directory != $rootdirectory) {
+							$warnings .= __("The directory <b>%1\$s</b> does not exist or could not be selected, so the directory <b>%2\$s</b> is shown instead.", $directory, $rootdirectory);
+							$directory = $rootdirectory;
+							$result3 = ftp_chdir($conn_id, $directory);
+						}
+
+						// The current directory *is* the user's root directory!
+						// We cannot display any other directory (like /), so print an error message.
+						else {
+							$errormessage = __("Your root directory <b>%1\$s</b> does not exist or could not be selected.", $directory);
+							setErrorVars(false, $errormessage, debug_backtrace(), __FILE__, __LINE__);
+						}
 					}
-
-					// The current directory *is* the user's root directory!
-					// We cannot display any other directory (like /), so print an error message.
 					else {
-						$errormessage = __("Your root directory <b>%1\$s</b> does not exist or could not be selected.", $directory);
+						$errormessage = __("The directory <b>%1\$s</b> could not be selected - you may not have sufficient rights to view this directory, or it may not exist.", $directory);
 						setErrorVars(false, $errormessage, debug_backtrace(), __FILE__, __LINE__);
 					}
-				}
-				else {
-					$errormessage = __("The directory <b>%1\$s</b> could not be selected - you may not have sufficient rights to view this directory, or it may not exist.", $directory);
-					setErrorVars(false, $errormessage, debug_backtrace(), __FILE__, __LINE__);
-				}
-			} // end if result2
+				} // end if result2
 
-		} // end if result1
+			} // end if result1
 	
-	} // end if / or "" or else
+		} // end if / or "" or else
 
+	} // end if FTP or FTP-SSL
 
 // -------------------------------------------------------------------------
 // Step 2 - Get list of directories and files
 // The -a option is used to show the hidden files as well on some FTP servers
 // Some servers do not return anything when using -a, so in that case try again without the -a option
 // -------------------------------------------------------------------------
-	$rawlist = ftp_rawlist($conn_id, "-a");
-	if (sizeof($rawlist) <= 1) { $rawlist = ftp_rawlist($conn_id, ""); }
-
+	if ($net2ftp_globals["protocol"] == "FTP" || $net2ftp_globals["protocol"] == "FTP-SSL") {
+		$rawlist = ftp_rawlist($conn_id, $directory);
+		if (sizeof($rawlist) <= 1) { $rawlist = ftp_rawlist($conn_id, ""); }
+	}
+	elseif ($net2ftp_globals["protocol"] == "FTP-SSH") {
+		$ssh_rawlist = $conn_id->rawlist($directory);
+		$i = 0;
+		while (list($key, $val) = each($ssh_rawlist)) {
+			$rawlist[$i] = $ssh_rawlist[$key];
+			$i++;
+		}
+	}
 
 // -------------------------------------------------------------------------
 // Step 3 - Parse the raw list
@@ -176,12 +189,13 @@ function ftp_getlist($conn_id, $directory) {
 		}
 
 // Check if the filename contains a forbidden keyword
-// If it does, then this line will not be selectable on the Browse screen
+// If it does, then this line will be selectable on the Browse screen but only some actions can be done with it (e.g. chmod, delete, rename)
 // Note: even if "selectable" is set to true here, it can still be set to false just below if the filesize is too big
 		if (checkAuthorizedName($listline["dirfilename"]) == true) { $listline["selectable"] = "ok"; }
 		else                                                       { $listline["selectable"] = "banned_keyword"; $nr_entries_banned_keyword++; }
 
 // Check if the filesize is bigger than the maximum authorized filesize
+// If it does, then this line will be selectable on the Browse screen but only some actions can be done with it (e.g. chmod, delete, rename)
 		if ($listline["dirorfile"] == "-" && isset($listline["size"]) && is_numeric($listline["size"])) { 
 			if ($listline["selectable"] == "ok" && $listline["size"] > $net2ftp_settings["max_filesize"]) { $listline["selectable"] = "too_big"; $nr_entries_too_big++; }
 		}
@@ -324,45 +338,46 @@ function ftp_scanline($directory, $rawlistline) {
 // -------------------------------------------------------------------------
 // Global variables
 // -------------------------------------------------------------------------
-	global $net2ftp_settings, $net2ftp_messages;
-
+	global $net2ftp_globals, $net2ftp_settings, $net2ftp_messages;
 
 // -------------------------------------------------------------------------
-// Scanning:
+// Scanning (for FTP and FTP-SSL only; not for FTP-SSH:
 //   1. first scan with strict rules
 //   2. if that does not match, scan with less strict rules
 //   3. if that does not match, scan with rules for specific FTP servers (AS400)
 //   4. and if that does not match, return the raw line
 // -------------------------------------------------------------------------
 
+	if ($net2ftp_globals["protocol"] == "FTP" || $net2ftp_globals["protocol"] == "FTP-SSL") {
+
 // ----------------------------------------------
 // 1. Strict rules
 // ----------------------------------------------
-	if (preg_match("/([-dl])([rwxsStT-]{9})[ ]+([0-9]+)[ ]+([^ ]+)[ ]+(.+)[ ]+([0-9]+)[ ]+([a-zA-Z]+[ ]+[0-9]+)[ ]+([0-9:]+)[ ]+(.*)/", $rawlistline, $regs) == true) {
-//                      permissions              number      owner      group   size        month         day        year/hour    filename
-		$listline["scanrule"]         = "rule-1";
-		$listline["dirorfile"]        = "$regs[1]";		// Directory ==> d, File ==> -
-		$listline["dirfilename"]      = "$regs[9]";		// Filename
-		$listline["size"]             = "$regs[6]";		// Size
-		$listline["owner"]            = "$regs[4]";		// Owner
-		$listline["group"]            = trim($regs[5]);		// Group
-		$listline["permissions"]      = "$regs[2]";		// Permissions
-		$listline["mtime"]            = "$regs[7] $regs[8]";	// Mtime -- format depends on what FTP server returns (year, month, day, hour, minutes... see above)
-	}
+		if (preg_match("/([-dl])([rwxsStT-]{9})[ ]+([0-9]+)[ ]+([^ ]+)[ ]+(.+)[ ]+([0-9]+)[ ]+([a-zA-Z]+[ ]+[0-9]+)[ ]+([0-9:]+)[ ]+(.*)/", $rawlistline, $regs) == true) {
+//                           permissions              number      owner      group   size        month         day        year/hour    filename
+			$listline["scanrule"]         = "rule-1";
+			$listline["dirorfile"]        = "$regs[1]";		// Directory ==> d, File ==> -
+			$listline["dirfilename"]      = "$regs[9]";		// Filename
+			$listline["size"]             = "$regs[6]";		// Size
+			$listline["owner"]            = "$regs[4]";		// Owner
+			$listline["group"]            = trim($regs[5]);		// Group
+			$listline["permissions"]      = "$regs[2]";		// Permissions
+			$listline["mtime"]            = "$regs[7] $regs[8]";	// Mtime -- format depends on what FTP server returns (year, month, day, hour, minutes... see above)
+		}
 
 // ----------------------------------------------
 // 2. Less strict rules
 // ----------------------------------------------
-	elseif (preg_match("/([-dl])([rwxsStT-]{9})[ ]+(.*)[ ]+([a-zA-Z0-9 ]+)[ ]+([0-9:]+)[ ]+(.*)/", $rawlistline, $regs) == true) {
-//                         permissions               number/owner/group/size
+		elseif (preg_match("/([-dl])([rwxsStT-]{9})[ ]+(.*)[ ]+([a-zA-Z0-9 ]+)[ ]+([0-9:]+)[ ]+(.*)/", $rawlistline, $regs) == true) {
+//                               permissions               number/owner/group/size
 //                                                      month-day          year/hour    filename
-		$listline["scanrule"]         = "rule-2";
-		$listline["dirorfile"]        = "$regs[1]";		// Directory ==> d, File ==> -
-		$listline["dirfilename"]      = "$regs[6]";		// Filename
-		$listline["size"]             = "$regs[3]";		// Number/Owner/Group/Size
-		$listline["permissions"]      = "$regs[2]";		// Permissions
-		$listline["mtime"]            = "$regs[4] $regs[5]";	// Mtime -- format depends on what FTP server returns (year, month, day, hour, minutes... see above)
-	}
+			$listline["scanrule"]         = "rule-2";
+			$listline["dirorfile"]        = "$regs[1]";		// Directory ==> d, File ==> -
+			$listline["dirfilename"]      = "$regs[6]";		// Filename
+			$listline["size"]             = "$regs[3]";		// Number/Owner/Group/Size
+			$listline["permissions"]      = "$regs[2]";		// Permissions
+			$listline["mtime"]            = "$regs[4] $regs[5]";	// Mtime -- format depends on what FTP server returns (year, month, day, hour, minutes... see above)
+		}
 
 // ----------------------------------------------
 // 3. Specific FTP server rules
@@ -371,90 +386,107 @@ function ftp_scanline($directory, $rawlistline) {
 // ---------------
 // 3.1 Windows
 // ---------------
-	elseif (preg_match("/([0-9\\/-]+)[ ]+([0-9:AMP]+)[ ]+([0-9]*|<DIR>)[ ]+(.*)/", $rawlistline, $regs) == true) {
-//                         date            time            size              filename
+		elseif (preg_match("/([0-9\\/-]+)[ ]+([0-9:AMP]+)[ ]+([0-9]*|<DIR>)[ ]+(.*)/", $rawlistline, $regs) == true) {
+//                               date            time            size              filename
 
-		$listline["scanrule"]         = "rule-3.1";
-		if ($regs[3] == "<DIR>") { $listline["size"] = ""; }
-		else                     { $listline["size"] = "$regs[3]"; } // Size
-		$listline["dirfilename"] = "$regs[4]";		// Filename
-		$listline["owner"]            = "";			// Owner
-		$listline["group"]            = "";			// Group
-		$listline["permissions"]      = "";			// Permissions
-		$listline["mtime"]            = "$regs[1] $regs[2]";	// Mtime -- format depends on what FTP server returns (year, month, day, hour, minutes... see above)
+			$listline["scanrule"]         = "rule-3.1";
+			if ($regs[3] == "<DIR>") { $listline["size"] = ""; }
+			else                     { $listline["size"] = "$regs[3]"; } // Size
+			$listline["dirfilename"] = "$regs[4]";		// Filename
+			$listline["owner"]            = "";			// Owner
+			$listline["group"]            = "";			// Group
+			$listline["permissions"]      = "";			// Permissions
+			$listline["mtime"]            = "$regs[1] $regs[2]";	// Mtime -- format depends on what FTP server returns (year, month, day, hour, minutes... see above)
 
-		if ($listline["size"] != "") { $listline["dirorfile"] = "-"; }
-		else                         { $listline["dirorfile"] = "d"; }
+			if ($listline["size"] != "") { $listline["dirorfile"] = "-"; }
+			else                         { $listline["dirorfile"] = "d"; }
 
-	}
+		}
 
 // ---------------
 // 3.2 Netware
 // Thanks to Danny!
 // ---------------
-	elseif (preg_match("/([-]|[d])[ ]+(.{10})[ ]+([^ ]+)[ ]+([0-9]*)[ ]+([a-zA-Z]*[ ]+[0-9]*)[ ]+([0-9:]*)[ ]+(.*)/", $rawlistline, $regs) == true) {
-//                         dir/file perms          owner      size        month         day        hour         filename
-		$listline["scanrule"]         = "rule-3.2";
-		$listline["dirorfile"]        = "$regs[1]";		// Directory ==> d, File ==> -
-		$listline["dirfilename"]      = "$regs[7]";		// Filename
-		$listline["size"]             = "$regs[4]";		// Size
-		$listline["owner"]            = "$regs[3]";		// Owner
-		$listline["group"]            = "";			// Group
-		$listline["permissions"]      = "$regs[2]";		// Permissions
-		$listline["mtime"]            = "$regs[5] $regs6";	// Mtime -- format depends on what FTP server returns (year, month, day, hour, minutes... see above)
-	}
+		elseif (preg_match("/([-]|[d])[ ]+(.{10})[ ]+([^ ]+)[ ]+([0-9]*)[ ]+([a-zA-Z]*[ ]+[0-9]*)[ ]+([0-9:]*)[ ]+(.*)/", $rawlistline, $regs) == true) {
+//                               dir/file perms          owner      size        month         day        hour         filename
+			$listline["scanrule"]         = "rule-3.2";
+			$listline["dirorfile"]        = "$regs[1]";		// Directory ==> d, File ==> -
+			$listline["dirfilename"]      = "$regs[7]";		// Filename
+			$listline["size"]             = "$regs[4]";		// Size
+			$listline["owner"]            = "$regs[3]";		// Owner
+			$listline["group"]            = "";			// Group
+			$listline["permissions"]      = "$regs[2]";		// Permissions
+			$listline["mtime"]            = "$regs[5] $regs6";	// Mtime -- format depends on what FTP server returns (year, month, day, hour, minutes... see above)
+		}
 
 // ---------------
 // 3.3 AS400
 // ---------------
-	elseif (preg_match("/([a-zA-Z0-9_-]+)[ ]+([0-9]+)[ ]+([0-9\\/-]+)[ ]+([0-9:]+)[ ]+([a-zA-Z0-9_ -\*]+)[ \\/]+([^\\/]+)/", $rawlistline, $regs) == true) {
-//                         owner               size        date            time         type                      filename
+		elseif (preg_match("/([a-zA-Z0-9_-]+)[ ]+([0-9]+)[ ]+([0-9\\/-]+)[ ]+([0-9:]+)[ ]+([a-zA-Z0-9_ -\*]+)[ \\/]+([^\\/]+)/", $rawlistline, $regs) == true) {
+//                               owner               size        date            time         type                      filename
 
-		if ($regs[5] != "*STMF") { $directory_or_file = "d"; }
-		elseif ($regs[5] == "*STMF") { $directory_or_file = "-"; }
+			if ($regs[5] != "*STMF") { $directory_or_file = "d"; }
+			elseif ($regs[5] == "*STMF") { $directory_or_file = "-"; }
 
-		$listline["scanrule"]         = "rule-3.3";
-		$listline["dirorfile"]        = "$directory_or_file";// Directory ==> d, File ==> -
-		$listline["dirfilename"]      = "$regs[6]";		// Filename
-		$listline["size"]             = "$regs[2]";		// Size
-		$listline["owner"]            = "$regs[1]";		// Owner
-		$listline["group"]            = "";			// Group
-		$listline["permissions"]      = "";			// Permissions
-		$listline["mtime"]            = "$regs[3] $regs[4]";	// Mtime -- format depends on what FTP server returns (year, month, day, hour, minutes... see above)
-	}
+			$listline["scanrule"]         = "rule-3.3";
+			$listline["dirorfile"]        = "$directory_or_file";// Directory ==> d, File ==> -
+			$listline["dirfilename"]      = "$regs[6]";		// Filename
+			$listline["size"]             = "$regs[2]";		// Size
+			$listline["owner"]            = "$regs[1]";		// Owner
+			$listline["group"]            = "";			// Group
+			$listline["permissions"]      = "";			// Permissions
+			$listline["mtime"]            = "$regs[3] $regs[4]";	// Mtime -- format depends on what FTP server returns (year, month, day, hour, minutes... see above)
+		}
 
 // ---------------
 // 3.4 Titan
 // Owner, group are modified compared to rule 1
 // TO DO: integrate this rule in rule 1 itself
 // ---------------
-	elseif (preg_match("/([-dl])([rwxsStT-]{9})[ ]+([0-9]+)[ ]+([a-zA-Z0-9]+)[ ]+([a-zA-Z0-9]+)[ ]+([0-9]+)[ ]+([a-zA-Z]+[ ]+[0-9]+)[ ]+([0-9:]+)[ ](.*)/", $rawlistline, $regs) == true) {
-//                         dir/file permissions      number      owner             group             size         month        date       time        file
-		$listline["scanrule"]         = "rule-3.4";
-		$listline["dirorfile"]        = "$regs[1]";        // Directory ==> d, File ==> -
-		$listline["dirfilename"]      = "$regs[9]";        // Filename
-		$listline["size"]             = "$regs[6]";        // Size
-		$listline["owner"]            = "$regs[4]";        // Owner
-		$listline["group"]            = "$regs[5]";        // Group
-		$listline["permissions"]      = "$regs[2]";        // Permissions
-		$listline["mtime"]            = "$regs[7] $regs[8]";    // Mtime -- format depends on what FTP server returns (year, month, day, hour, minutes... see above)
-	}
+		elseif (preg_match("/([-dl])([rwxsStT-]{9})[ ]+([0-9]+)[ ]+([a-zA-Z0-9]+)[ ]+([a-zA-Z0-9]+)[ ]+([0-9]+)[ ]+([a-zA-Z]+[ ]+[0-9]+)[ ]+([0-9:]+)[ ](.*)/", $rawlistline, $regs) == true) {
+//                               dir/file permissions      number      owner             group             size         month        date       time        file
+			$listline["scanrule"]         = "rule-3.4";
+			$listline["dirorfile"]        = "$regs[1]";        // Directory ==> d, File ==> -
+			$listline["dirfilename"]      = "$regs[9]";        // Filename
+			$listline["size"]             = "$regs[6]";        // Size
+			$listline["owner"]            = "$regs[4]";        // Owner
+			$listline["group"]            = "$regs[5]";        // Group
+			$listline["permissions"]      = "$regs[2]";        // Permissions
+			$listline["mtime"]            = "$regs[7] $regs[8]";    // Mtime -- format depends on what FTP server returns (year, month, day, hour, minutes... see above)
+		}
 
 // ----------------------------------------------
 // 4. If nothing matchs, return the raw line
 // ----------------------------------------------
-	else {
-		$listline["scanrule"]         = "rule-4";
-		$listline["dirorfile"]        = "u";
-		$listline["dirfilename"]      = $rawlistline;
+		else {
+			$listline["scanrule"]         = "rule-4";
+			$listline["dirorfile"]        = "u";
+			$listline["dirfilename"]      = $rawlistline;
+		}
+
+	} // end if FTP or FTP-SSL
+
+// -------------------------------------------------------------------------
+// FTP-SSH
+// -------------------------------------------------------------------------
+	elseif ($net2ftp_globals["protocol"] == "FTP-SSH") {
+		$listline["scanrule"]         = "FTP-SSH";
+		if (isset($rawlistline["type"]) && $rawlistline["type"] == 2) { $listline["dirorfile"]  = "d"; }
+		else                                                          { $listline["dirorfile"]  = "-"; }
+		$listline["dirfilename"]      = $rawlistline["filename"];    // Filename
+		$listline["size"]             = $rawlistline["size"];        // Size
+		$listline["owner"]            = $rawlistline["uid"];         // Owner
+		$listline["group"]            = $rawlistline["gid"];         // Group
+		$listline["permissions"]      = $rawlistline["permissions"]; // Permissions
+		$listline["mtime"]            = $rawlistline["mtime"];       // Mtime -- 
 	}
 
 // -------------------------------------------------------------------------
 // Remove the . and .. entries
 // Remove the total line that some servers return
 // -------------------------------------------------------------------------
-	if ($listline["dirfilename"] == "." || $listline["dirfilename"] == "..") { return ""; }
-	elseif (substr($rawlistline,0,5) == "total") { return ""; }
+	if     ($listline["dirfilename"] == "." || $listline["dirfilename"] == "..") { return ""; }
+	elseif (is_string($rawlistline) == true && substr($rawlistline,0,5) == "total") { return ""; }
 
 // -------------------------------------------------------------------------
 // And finally... return the nice list!
@@ -506,7 +538,7 @@ Followed by a two characters which are not digits between 1 and 9
 Followed by one or more n characters at the end of a string
 
 // $regs can contain a maximum of 10 elements !! (regs[0] to regs[9])
-// To specify what you really want back from ereg, use (). Only what is within () will be returned. See below.
+// To specify what you really want back from e reg, use (). Only what is within () will be returned. See below.
 
 */
 
@@ -826,7 +858,6 @@ function ftp2http($directory, $list_files, $htmltags) {
 		}
 
 // Calculate all the URLs on the Browse screen
-
 		for ($i=1; $i<=sizeof($list_files); $i++) {
 			$URL = "http://www." . $regs[1] . $regs[2] . $directory . "/" . $list_files[$i][$encoding];
 			if ($htmltags == "no") { $list_links[$i] = $URL; }

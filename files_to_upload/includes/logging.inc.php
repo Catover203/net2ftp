@@ -2,7 +2,7 @@
 
 //   -------------------------------------------------------------------------------
 //  |                  net2ftp: a web based FTP client                              |
-//  |              Copyright (c) 2003-2013 by David Gartner                         |
+//  |              Copyright (c) 2003-2017 by David Gartner                         |
 //  |                                                                               |
 //  | This program is free software; you can redistribute it and/or                 |
 //  | modify it under the terms of the GNU General Public License                   |
@@ -56,12 +56,29 @@ function logAccess() {
 // ----------------------------------------------
 // Add slashes to variables which are used in a SQL query, and which are
 // potentially unsafe (supplied by the user).
-			// $date is calculated in this function
-			// $time is calculated in this function
-			$REMOTE_ADDR_safe               = addslashes($net2ftp_globals["REMOTE_ADDR"]);
-			$REMOTE_PORT_safe               = addslashes($net2ftp_globals["REMOTE_PORT"]);
-			$HTTP_USER_AGENT_safe           = addslashes($net2ftp_globals["HTTP_USER_AGENT"]);
-			$PHP_SELF_safe                  = addslashes($net2ftp_globals["PHP_SELF"]);
+			// id is defined by database
+			// $date is calculated in this function (see above)
+			// $time is calculated in this function (see above)
+			$page_safe                = addslashes($net2ftp_globals["page"]);
+			$state_safe               = addslashes($net2ftp_globals["state"]);
+			$state2_safe              = addslashes($net2ftp_globals["state2"]);
+			$screen_safe              = addslashes($net2ftp_globals["screen"]);
+			$skin_safe                = addslashes($net2ftp_globals["skin"]);
+			$language_safe            = addslashes($net2ftp_globals["language"]);
+			$protocol_safe            = addslashes($net2ftp_globals["protocol"]);
+			$ftpserver_safe           = addslashes($net2ftp_globals["ftpserver"]);
+			$ftpserver_ipaddress_safe = addslashes($net2ftp_globals["ftpserver_ipaddress"]);
+			$ftpserver_country_safe   = addslashes($net2ftp_globals["ftpserver_country"]);
+			$ftpserverport_safe       = addslashes($net2ftp_globals["ftpserverport"]);
+			$username_safe            = addslashes($net2ftp_globals["username"]); 
+			$directory_safe           = addslashes($net2ftp_globals["directory"]);
+			$entry_safe               = addslashes($net2ftp_globals["entry"]);
+			$user_email_safe          = addslashes($net2ftp_globals["user_email"]);
+			$user_ipaddress_safe      = addslashes($net2ftp_globals["REMOTE_ADDR"]);
+			$user_country_safe        = addslashes($net2ftp_globals["user_country"]);
+			$user_port_safe           = addslashes($net2ftp_globals["REMOTE_PORT"]);
+			$user_http_user_agent_safe = addslashes($net2ftp_globals["user_http_user_agent"]);
+
 			if (isset($net2ftp_globals["consumption_datatransfer"]) == true) {
 				$consumption_datatransfer_safe  = addslashes($net2ftp_globals["consumption_datatransfer"]);
 			}
@@ -74,35 +91,27 @@ function logAccess() {
 			else {
 				$consumption_executiontime_safe = "0";
 			}
-			$net2ftp_ftpserver_safe         = addslashes($net2ftp_globals["ftpserver"]);
-			$net2ftp_username_safe          = addslashes($net2ftp_globals["username"]); 
-			$state_safe                     = addslashes($net2ftp_globals["state"]);
-			$state2_safe                    = addslashes($net2ftp_globals["state2"]);
-			$screen_safe                    = addslashes($net2ftp_globals["screen"]);
-			$directory_safe                 = addslashes($net2ftp_globals["directory"]);
-			$entry_safe                     = addslashes($net2ftp_globals["entry"]);
-			$HTTP_REFERER_safe              = addslashes($net2ftp_globals["HTTP_REFERER"]);
 
 // ----------------------------------------------
 // Connect to the DB
 // ----------------------------------------------
-			$mydb = connect2db();
+			net2ftp_connect_db();
 			if ($net2ftp_result["success"] == false) { return false; }
 
 // ----------------------------------------------
 // Add record to the database table
 // ----------------------------------------------
-			$sqlquery1 = "INSERT INTO net2ftp_log_access VALUES(null, '$date', '$time', '$REMOTE_ADDR_safe', '$REMOTE_PORT_safe', '$HTTP_USER_AGENT_safe', '$PHP_SELF_safe', '$consumption_datatransfer_safe', '$consumption_executiontime_safe', '$net2ftp_ftpserver_safe', '$net2ftp_username_safe', '$state_safe', '$state2_safe', '$screen_safe', '$directory_safe', '$entry_safe', '$HTTP_REFERER_safe')";
-			$result1 = mysql_query($sqlquery1);
+			$sqlquery1 = "INSERT INTO net2ftp_log_access VALUES(null, '$date', '$time', '$page_safe', '$state_safe', '$state2_safe', '$screen_safe', '$skin_safe', '$language_safe', '$protocol_safe', '$ftpserver_safe', '$ftpserver_ipaddress_safe', '$ftpserver_country_safe', '$ftpserverport_safe', '$username_safe', '$directory_safe', '$entry_safe', '$user_email_safe', '$user_ipaddress_safe', '$user_country_safe', '$user_port_safe', '$user_http_user_agent_safe', '$consumption_datatransfer_safe', '$consumption_executiontime_safe')";
+			$result1 = mysqli_query($net2ftp_globals["mysqli_link"], $sqlquery1);
 			if ($result1 == false) { 
 				$errormessage = __("Unable to execute the SQL query.");
 				setErrorVars(false, $errormessage, debug_backtrace(), __FILE__, __LINE__);
 				return false;
 			}
 
-			$nrofrows1 = mysql_affected_rows($mydb);
+			$nrofrows1 = mysqli_affected_rows($net2ftp_globals["mysqli_link"]);
 
-			$net2ftp_globals["log_access_id"] = mysql_insert_id();
+			$net2ftp_globals["log_access_id"] = mysqli_insert_id($net2ftp_globals["mysqli_link"]);
 
 		} // end if use_database
 
@@ -131,7 +140,7 @@ function logAccess() {
 // ----------------------------------------------
 // Create message
 // ----------------------------------------------
-			$message2log = "$date $time " . $net2ftp_globals["REMOTE_ADDR"] . " " . $net2ftp_globals["REMOTE_PORT"] . " " . $net2ftp_globals["PHP_SELF"] . " " . $consumption_datatransfer . " " . $consumption_executiontime . " " . $net2ftp_globals["ftpserver"] . " " . $net2ftp_globals["username"] . " " . $net2ftp_globals["state"] . " " . $net2ftp_globals["state2"] . " " . $net2ftp_globals["screen"] . " " . $net2ftp_globals["directory"] . " " . $net2ftp_globals["entry"];
+			$message2log = "$date $time " . $net2ftp_globals["REMOTE_ADDR"] . " " . $net2ftp_globals["REMOTE_PORT"] . " " . $net2ftp_globals["page"] . " " . $consumption_datatransfer . " " . $consumption_executiontime . " " . $net2ftp_globals["ftpserver"] . " " . $net2ftp_globals["username"] . " " . $net2ftp_globals["state"] . " " . $net2ftp_globals["state2"] . " " . $net2ftp_globals["screen"] . " " . $net2ftp_globals["directory"] . " " . $net2ftp_globals["entry"];
 			$result2 = openlog($net2ftp_settings["syslog_ident"], 0, $net2ftp_settings["syslog_facility"]);
 			if ($result2 == false) { 
 				$errormessage = __("Unable to open the system log.");
@@ -232,21 +241,47 @@ function logError() {
 // ----------------------------------------------
 // Add slashes to variables which are used in a SQL query, and which are
 // potentially unsafe (supplied by the user).
-			// $date is calculated in this function
-			// $time is calculated in this function
-			$net2ftp_ftpserver_safe = addslashes($net2ftp_globals["ftpserver"]);
-			$net2ftp_username_safe  = addslashes($net2ftp_globals["username"]); 
-			$state_safe             = addslashes($net2ftp_globals["state"]);
-			$state2_safe            = addslashes($net2ftp_globals["state2"]);
-			$directory_safe         = addslashes($net2ftp_globals["directory"]);
-			$REMOTE_ADDR_safe       = addslashes($net2ftp_globals["REMOTE_ADDR"]);
-			$REMOTE_PORT_safe       = addslashes($net2ftp_globals["REMOTE_PORT"]);
-			$HTTP_USER_AGENT_safe   = addslashes($net2ftp_globals["HTTP_USER_AGENT"]);
+			// id is defined by database
+			// $date is calculated in this function (see above)
+			// $time is calculated in this function (see above)
+			$page_safe                = addslashes($net2ftp_globals["page"]);
+			$state_safe               = addslashes($net2ftp_globals["state"]);
+			$state2_safe              = addslashes($net2ftp_globals["state2"]);
+			$screen_safe              = addslashes($net2ftp_globals["screen"]);
+			$skin_safe                = addslashes($net2ftp_globals["skin"]);
+			$language_safe            = addslashes($net2ftp_globals["language"]);
+			$protocol_safe            = addslashes($net2ftp_globals["protocol"]);
+			$ftpserver_safe           = addslashes($net2ftp_globals["ftpserver"]);
+			$ftpserver_ipaddress_safe = addslashes($net2ftp_globals["ftpserver_ipaddress"]);
+			$ftpserver_country_safe   = addslashes($net2ftp_globals["ftpserver_country"]);
+			$ftpserverport_safe       = addslashes($net2ftp_globals["ftpserverport"]);
+			$username_safe            = addslashes($net2ftp_globals["username"]); 
+			$directory_safe           = addslashes($net2ftp_globals["directory"]);
+			$entry_safe               = addslashes($net2ftp_globals["entry"]);
+			$user_email_safe          = addslashes($net2ftp_globals["user_email"]);
+			$user_ipaddress_safe      = addslashes($net2ftp_globals["REMOTE_ADDR"]);
+			$user_country_safe        = addslashes($net2ftp_globals["user_country"]);
+			$user_port_safe           = addslashes($net2ftp_globals["REMOTE_PORT"]);
+			$user_http_user_agent_safe = addslashes($net2ftp_globals["user_http_user_agent"]);
+
+			if (isset($net2ftp_globals["consumption_datatransfer"]) == true) {
+				$consumption_datatransfer_safe  = addslashes($net2ftp_globals["consumption_datatransfer"]);
+			}
+			else {
+				$consumption_datatransfer_safe  = "0";
+			}
+			if (isset($net2ftp_globals["consumption_executiontime"]) == true) {
+				$consumption_executiontime_safe = addslashes($net2ftp_globals["consumption_executiontime"]);
+			}
+			else {
+				$consumption_executiontime_safe = "0";
+			}
+
 
 // ----------------------------------------------
 // Connect to the DB
 // ----------------------------------------------
-			$mydb = connect2db();
+			net2ftp_connect_db();
 			if ($net2ftp_result["success"] == false) { 
 				setErrorVars($net2ftp_result_original["success"], $net2ftp_result_original["errormessage"], $net2ftp_result_original["debug_backtrace"], $net2ftp_result_original["file"], $net2ftp_result_original["line"]);
 				return false; 
@@ -255,9 +290,9 @@ function logError() {
 // ----------------------------------------------
 // Add record to the database table
 // ----------------------------------------------
-			$sqlquerystring = "INSERT INTO net2ftp_log_error VALUES('$date', '$time', '$net2ftp_ftpserver_safe', '$net2ftp_username_safe', '$errormessage', '$debug_backtrace', '$state_safe', '$state2_safe', '$directory_safe', '$REMOTE_ADDR_safe', '$REMOTE_PORT_safe', '$HTTP_USER_AGENT_safe')";
-			$result_mysql_query = mysql_query($sqlquerystring);
-			if ($result_mysql_query == false) { 
+			$sqlquery1 = "INSERT INTO net2ftp_log_error VALUES(null, '$date', '$time', '$page_safe', '$state_safe', '$state2_safe', '$screen_safe', '$skin_safe', '$language_safe', '$protocol_safe', '$ftpserver_safe', '$ftpserver_ipaddress_safe', '$ftpserver_country_safe', '$ftpserverport_safe', '$username_safe', '$directory_safe', '$entry_safe', '$user_email_safe', '$user_ipaddress_safe',  '$user_country_safe', '$user_port_safe', '$user_http_user_agent_safe', '$consumption_datatransfer_safe', '$consumption_executiontime_safe', '$errormessage', '$debug_backtrace')";
+			$result_mysqli_query = mysqli_query($net2ftp_globals["mysqli_link"], $sqlquery1);
+			if ($result_mysqli_query == false) { 
 				setErrorVars($net2ftp_result_original["success"], $net2ftp_result_original["errormessage"], $net2ftp_result_original["debug_backtrace"], $net2ftp_result_original["file"], $net2ftp_result_original["line"]);
 				return false; 
 			}
@@ -288,7 +323,7 @@ function logError() {
 // ----------------------------------------------
 // Create message
 // ----------------------------------------------
-			$message2log = "$date $time " . $net2ftp_globals["ftpserver"] . " " . $net2ftp_globals["username"] . " " . $net2ftp_result["errormessage"] . " $debug_backtrace " . $net2ftp_globals["state"] . " " . $net2ftp_globals["state2"] . " " . $net2ftp_globals["directory"] . " " . $net2ftp_globals["REMOTE_ADDR"] . " " . $net2ftp_globals["HTTP_USER_AGENT"];
+			$message2log = "$date $time " . $net2ftp_globals["ftpserver"] . " " . $net2ftp_globals["username"] . " " . $net2ftp_result["errormessage"] . " $debug_backtrace " . $net2ftp_globals["state"] . " " . $net2ftp_globals["state2"] . " " . $net2ftp_globals["directory"] . " " . $net2ftp_globals["REMOTE_ADDR"] . " " . $net2ftp_globals["user_http_user_agent"];
 			$result2 = openlog($net2ftp_settings["syslog_ident"], 0, $net2ftp_settings["syslog_facility"]);
 			if ($result2 == false) { 
 				$errormessage = __("Unable to open the system log.");
@@ -358,21 +393,26 @@ function getLogStatus() {
 // -------------------------------------------------------------------------
 // Connect to the database
 // -------------------------------------------------------------------------
-	$mydb = connect2db();
+	net2ftp_connect_db();
 	if ($net2ftp_result["success"] == false) { return false; }
 
 // -------------------------------------------------------------------------
 // Get log rotation status
 // -------------------------------------------------------------------------
 	$sqlquery1 = "SELECT status FROM net2ftp_log_status WHERE month = '$currentmonth';";
-	$result1   = mysql_query("$sqlquery1") or die("Unable to execute SQL SELECT query (getLogStatus > sqlquery1) <br /> $sqlquery1");
-	$nrofrows1 = mysql_num_rows($result1);
 
+	$result1   = mysqli_query($net2ftp_globals["mysqli_link"], "$sqlquery1");
+	if ($result1 == false) { 
+		setErrorVars(false, "Unable to execute SQL SELECT query (getLogStatus > sqlquery1) <br /> $sqlquery1", debug_backtrace(), __FILE__, __LINE__);
+		return false; 
+	}
+
+	$nrofrows1 = @mysqli_num_rows($result1);
 	if     ($nrofrows1 == 0) { 
 		$logStatus = 1;
 	}
 	elseif ($nrofrows1 == 1) { 
-		$resultRow1 = mysql_fetch_row($result1); 
+		$resultRow1 = mysqli_fetch_row($result1); 
 		$logStatus  = $resultRow1[0];
 	}
 	else { 
@@ -427,32 +467,32 @@ function putLogStatus($logStatus) {
 // -------------------------------------------------------------------------
 // Connect to the database
 // -------------------------------------------------------------------------
-	$mydb = connect2db();
+	net2ftp_connect_db();
 	if ($net2ftp_result["success"] == false) { return false; }
 
 // -------------------------------------------------------------------------
 // Put log rotation status
 // -------------------------------------------------------------------------
 	$sqlquery1 = "SELECT status, changelog FROM net2ftp_log_status WHERE month = '$currentmonth';";
-	$result1   = mysql_query("$sqlquery1");
-	$nrofrows1 = mysql_num_rows($result1);
+	$result1   = mysqli_query($net2ftp_globals["mysqli_link"], "$sqlquery1");
+	$nrofrows1 = @mysqli_num_rows($result1);
 
 	if ($nrofrows1 == 1) { 
-		$resultRow1 = mysql_fetch_row($result1); 
+		$resultRow1 = mysqli_fetch_row($result1); 
 		$logStatus_old  = $resultRow1[0];
 		$changelog_old  = $resultRow1[1];
 		$changelog_new  = $changelog_old . "From $logStatus_old to $logStatus on $datetime. ";
 		$sqlquery2 = "UPDATE net2ftp_log_status SET status = '" . $logStatus . "', changelog = '" . $changelog_new . "' WHERE month = '$currentmonth';";
-		$result2   = mysql_query("$sqlquery2");
-		$nrofrows2 = mysql_affected_rows($mydb);
+		$result2   = mysqli_query($net2ftp_globals["mysqli_link"], "$sqlquery2");
+		$nrofrows2 = mysqli_affected_rows($net2ftp_globals["mysqli_link"]);
 	}
 // Don't check on the UPDATE nr of rows, because when the values in the variables and in the table are the same,
 // the $nrofrows2 is set to 0. 
 	elseif ($nrofrows1 == 0) { 
 		$changelog_new  = "Set to $logStatus on $datetime. ";
 		$sqlquery3 = "INSERT INTO net2ftp_log_status VALUES('$currentmonth', '" . $logStatus . "', '" . $changelog_new . "');";
-		$result3   = mysql_query("$sqlquery3");
-		$nrofrows3 = mysql_affected_rows($mydb);
+		$result3   = mysqli_query($net2ftp_globals["mysqli_link"], "$sqlquery3");
+		$nrofrows3 = mysqli_affected_rows($net2ftp_globals["mysqli_link"]);
 		if ($nrofrows3 != 1) { 
 			setErrorVars(false, __("Table net2ftp_log_status could not be updated."), debug_backtrace(), __FILE__, __LINE__);
 			return false; 
@@ -503,7 +543,7 @@ function emptyLogs($datefrom, $dateto) {
 // -------------------------------------------------------------------------
 // Connect to the database
 // -------------------------------------------------------------------------
-	$mydb = connect2db();
+	net2ftp_connect_db();
 	if ($net2ftp_result["success"] == false)  { return false; }
 
 	$tables[1] = "net2ftp_log_access";
@@ -516,10 +556,10 @@ function emptyLogs($datefrom, $dateto) {
 // -------------------------------------------------------------------------
 	for ($i=1; $i<=sizeof($tables); $i++) {
 		$sqlquery_empty   = "DELETE FROM $tables[$i] WHERE date BETWEEN '$datefrom' AND '$dateto';";
-		$result_empty[$i] = mysql_query("$sqlquery_empty");
+		$result_empty[$i] = mysqli_query($net2ftp_globals["mysqli_link"], "$sqlquery_empty");
 
 		$sqlquery_optimize   = "OPTIMIZE TABLE `" . $tables[$i] . "`;";
-		$result_optimize[$i] = mysql_query("$sqlquery_optimize");
+		$result_optimize[$i] = mysqli_query($net2ftp_globals["mysqli_link"], "$sqlquery_optimize");
 
 		if ($result_empty[$i] == true)    { 
 			$net2ftp_output["emptyLogs"][] = __("The table <b>%1\$s</b> was emptied successfully.", $tables[$i]); 
@@ -605,7 +645,7 @@ function rotateLogs() {
 // -------------------------------------------------------------------------
 // Connect to the database
 // -------------------------------------------------------------------------
-	$mydb = connect2db();
+	net2ftp_connect_db();
 	if ($net2ftp_result["success"] == false) { return false; }
 
 // -------------------------------------------------------------------------
@@ -641,7 +681,7 @@ function rotateLogs() {
 			$table_archive_drop = $table . "_" . $dropmonth;  // Example: net2ftp_log_access_201106
 
 			$sqlquery_rename   = "RENAME TABLE $table TO $table_archive";
-			$result_rename[$i] = mysql_query("$sqlquery_rename");
+			$result_rename[$i] = mysqli_query($net2ftp_globals["mysqli_link"], "$sqlquery_rename");
 
 			if ($result_rename[$i] == true) { 
 				$net2ftp_output["rotateLogs"][] = __("The log tables were renamed successfully."); 
@@ -673,7 +713,7 @@ function rotateLogs() {
 			$table_archive_drop = $table . "_" . $dropmonth;  // Example: net2ftp_log_access_201106
 
 			$sqlquery_copy   = "CREATE TABLE $table LIKE $table_archive";
-			$result_copy[$i] = mysql_query("$sqlquery_copy");
+			$result_copy[$i] = mysqli_query($net2ftp_globals["mysqli_link"], "$sqlquery_copy");
 
 			if ($result_copy[$i] == true) { 
 				$net2ftp_output["rotateLogs"][] = __("The log tables were copied successfully."); 
@@ -705,7 +745,7 @@ function rotateLogs() {
 			$table_archive_drop = $table . "_" . $dropmonth;  // Example: net2ftp_log_access_201106
 
 			$sqlquery_drop   = "DROP TABLE IF EXISTS $table_archive_drop;";
-			$result_drop[$i] = mysql_query("$sqlquery_drop");
+			$result_drop[$i] = mysqli_query($net2ftp_globals["mysqli_link"], "$sqlquery_drop");
 
 			if ($result_drop[$i] == true) { 
 				$net2ftp_output["rotateLogs"][] = __("The oldest log table was dropped successfully."); 

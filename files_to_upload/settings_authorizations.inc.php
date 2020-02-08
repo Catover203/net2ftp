@@ -2,7 +2,7 @@
 
 //   -------------------------------------------------------------------------------
 //  |                  net2ftp: a web based FTP client                              |
-//  |              Copyright (c) 2003-2013 by David Gartner                         |
+//  |              Copyright (c) 2003-2017 by David Gartner                         |
 //  |                                                                               |
 //   -------------------------------------------------------------------------------
 //  |                                                                               |
@@ -17,11 +17,47 @@
 
 
 // ----------------------------------------------------------------------------------
-// Check the authorizations?
-// Set to yes or no.
+// Geoblocking 
 // ----------------------------------------------------------------------------------
-$net2ftp_settings["check_authorization"] = "yes";
 
+// Database table ip2location_db1 must be loaded with the IP to country information
+// This can be downloaded from ip2location.com (free version available)
+$net2ftp_settings["use_geoblocking"] = "no";
+
+// Geoblocked countries (27 EU + Britain, Croatia, Iceland, Liechtenstein, Norway, Switzerland)
+// The geoblock is applied both for users and FTP servers
+$net2ftp_settings["geoblock"][1] = "AU";  // Austria
+$net2ftp_settings["geoblock"][2] = "BE";  // Belgium
+$net2ftp_settings["geoblock"][3] = "BG";  // Bulgaria
+$net2ftp_settings["geoblock"][4] = "HR";  // Croatia
+$net2ftp_settings["geoblock"][5] = "CY";  // Cyprus
+$net2ftp_settings["geoblock"][6] = "CZ";  // Czech Republic
+$net2ftp_settings["geoblock"][7] = "DK";  // Denmark
+$net2ftp_settings["geoblock"][8] = "EE";  // Estonia
+$net2ftp_settings["geoblock"][9] = "FI";  // Finland
+$net2ftp_settings["geoblock"][10] = "FR"; // France
+$net2ftp_settings["geoblock"][11] = "DE"; // Germany
+$net2ftp_settings["geoblock"][12] = "GR"; // Greece
+$net2ftp_settings["geoblock"][13] = "HU"; // Hungary
+$net2ftp_settings["geoblock"][14] = "IS"; // Iceland
+$net2ftp_settings["geoblock"][15] = "IE"; // Ireland
+$net2ftp_settings["geoblock"][16] = "IT"; // Italy
+$net2ftp_settings["geoblock"][17] = "LV"; // Latvia
+$net2ftp_settings["geoblock"][18] = "LI"; // Liechtenstein
+$net2ftp_settings["geoblock"][19] = "LT"; // Lithuania
+$net2ftp_settings["geoblock"][20] = "LU"; // Luxembourg
+$net2ftp_settings["geoblock"][21] = "MT"; // Malta
+$net2ftp_settings["geoblock"][22] = "NL"; // Netherlands
+$net2ftp_settings["geoblock"][23] = "NO"; // Norway
+$net2ftp_settings["geoblock"][24] = "PL"; // Poland
+$net2ftp_settings["geoblock"][25] = "PT"; // Portugal
+$net2ftp_settings["geoblock"][26] = "RO"; // Romania
+$net2ftp_settings["geoblock"][27] = "SK"; // Slovakia
+$net2ftp_settings["geoblock"][28] = "SI"; // Slovenia
+$net2ftp_settings["geoblock"][29] = "ES"; // Spain
+$net2ftp_settings["geoblock"][30] = "SE"; // Sweden
+$net2ftp_settings["geoblock"][31] = "GB"; // UK
+//$net2ftp_settings["geoblock"][32] = "CH"; // Switzerland
 
 // ----------------------------------------------------------------------------------
 // Allowed FTP servers

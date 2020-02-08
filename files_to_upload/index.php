@@ -22,15 +22,14 @@
 // ------------------------------------------------------------------------
 // 1. Define the constants NET2FTP_APPLICATION_ROOTDIR and NET2FTP_APPLICATION_ROOTDIR_URL
 // ------------------------------------------------------------------------
-$server_protocol = "http://";
-if (isset($_SERVER["SERVER_PROTOCOL"]) == true && stripos($_SERVER["SERVER_PROTOCOL"], "https") !== false) { $server_protocol = "https://"; } 
-$http_host = "";
-if (isset($_SERVER["HTTP_HOST"]) == true) { $http_host = $_SERVER["HTTP_HOST"]; }
-$script_name = "/index.php";
-if (isset($_SERVER["SCRIPT_NAME"]) == true)  { $script_name = dirname($_SERVER["SCRIPT_NAME"]); }
-elseif (isset($_SERVER["PHP_SELF"]) == true) { $script_name = dirname($_SERVER["PHP_SELF"]); }
+$http_scheme = "http://";
+if (isset($_SERVER["HTTPS"]) && $_SERVER["HTTPS"] == "on") { $http_scheme = "https://"; }
+$http_host = $_SERVER["HTTP_HOST"];
+if     (isset($_SERVER["SCRIPT_NAME"]) == true)  { $http_directory = dirname($_SERVER["SCRIPT_NAME"]); }
+elseif (isset($_SERVER["PHP_SELF"]) == true)     { $http_directory = dirname($_SERVER["PHP_SELF"]); }
+if ($http_directory == "/") { $http_directory = ""; }
 define("NET2FTP_APPLICATION_ROOTDIR", dirname(__FILE__));
-define("NET2FTP_APPLICATION_ROOTDIR_URL", $server_protocol . $http_host . $script_name); 
+define("NET2FTP_APPLICATION_ROOTDIR_URL", $http_scheme . $http_host . $http_directory);
 
 // ------------------------------------------------------------------------
 // 2. Include the file /path/to/net2ftp/includes/main.inc.php
@@ -42,8 +41,9 @@ require_once("./includes/main.inc.php");
 //    be called once before the other net2ftp() calls!
 // ------------------------------------------------------------------------
 net2ftp("sendHttpHeaders");
+
 if ($net2ftp_result["success"] == false) {
-	require_once("./skins/blue/error_wrapped.template.php");
+	require_once("./skins/shinra/error_wrapped.template.php");
 	exit();
 }
 ?>
@@ -52,11 +52,11 @@ if ($net2ftp_result["success"] == false) {
 <head>
 <meta http-equiv="Content-type" content="text/html;charset=<?php echo __("iso-8859-1"); ?>" />
 <meta name="keywords" content="net2ftp, web, ftp, based, web-based, xftp, client, PHP, SSL, SSH, SSH2, password, server, free, gnu, gpl, gnu/gpl, net, net to ftp, netftp, connect, user, gui, interface, web2ftp, edit, editor, online, code, php, upload, download, copy, move, delete, zip, tar, unzip, untar, recursive, rename, chmod, syntax, highlighting, host, hosting, ISP, webserver, plan, bandwidth" />
-<meta name="description" content="net2ftp is a web based FTP client. It is mainly aimed at managing websites using a browser. Edit code, upload/download files, copy/move/delete directories recursively, rename files and directories -- without installing any software." />
-<meta name="viewport" content="width=device-width; initial-scale=1.0; maximum-scale=1.0; user-scalable=0;" />
+<meta name="description" content="net2ftp is a web based FTP and SSH client. It is mainly aimed at managing websites using a browser. Edit code, upload/download files, copy/move/delete directories recursively, rename files and directories -- without installing any software." />
 <link rel="shortcut icon" href="favicon.ico" />
 <link rel="apple-touch-icon" href="favicon.png"/>
 <title>net2ftp - a web based FTP client</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <?php net2ftp("printJavascript"); ?>
 <?php net2ftp("printCss"); ?>
 </head>

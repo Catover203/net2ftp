@@ -2,7 +2,7 @@
 
 //   -------------------------------------------------------------------------------
 //  |                  net2ftp: a web based FTP client                              |
-//  |              Copyright (c) 2003-2013 by David Gartner                         |
+//  |              Copyright (c) 2003-2017 by David Gartner                         |
 //  |                                                                               |
 //  | This program is free software; you can redistribute it and/or                 |
 //  | modify it under the terms of the GNU General Public License                   |
@@ -31,26 +31,43 @@ function getSkinArray() {
 // -------------------------------------------------------------------------
 // Shinra
 // -------------------------------------------------------------------------
-	$stylesheet = "style.css.php?show_ads=" . $net2ftp_settings["show_ads"];
+
+// Determine main CSS stylesheet depending on platform and LTR/RTL language
+
+	if ($net2ftp_globals["browser_platform"] == "Mobile") { $platform = "mobile";  }
+	else 									{ $platform = "desktop"; }
+
+	if ($net2ftp_globals["language"] == "he" || $net2ftp_globals["language"] == "ar") { $ltr = "rtl"; }
+	else                                                                              { $ltr = "ltr"; }
+
+
+	if ($platform == "desktop" && $ltr == "ltr")     { $stylesheet = "main_desktop.ltr.css"; }
+	elseif ($platform == "desktop" && $ltr == "rtl") { $stylesheet = "main_desktop.rtl.css"; }
+	elseif ($platform == "mobile"  && $ltr == "ltr") { $stylesheet = "main_mobile.ltr.css"; }
+	elseif ($platform == "mobile"  && $ltr == "rtl") { $stylesheet = "main_mobile.rtl.css"; }
+	else                                             { $stylesheet = "main_desktop.ltr.css"; }
+
+// Set skin variables
 
 	$skinArray["shinra"]["name"]           = "Shinra";
 	$skinArray["shinra"]["iconset"]        = "nuvola";
 	$skinArray["shinra"]["image_url"]      = $net2ftp_globals["application_rootdir_url"] . "/skins/shinra/images";
 	$skinArray["shinra"]["icon_size_mime"] = "16";
 
+
+
 	if ($net2ftp_settings["net2ftpdotcom"] == "yes") {
 		$skinArray["shinra"]["css"]            = "
-			<!-- /skins/skins.inc.php -->
+			<!-- /skins/skins.inc.php css -->
 			<link rel=\"stylesheet\" href=\"skins/shinra/css/" . $stylesheet . "\" type=\"text/css\" media=\"screen\" />
 			<link rel=\"stylesheet\" href=\"skins/shinra/css/superfish.css\"      type=\"text/css\"  media=\"screen\" /> 
-			<link rel=\"stylesheet\" href=\"skins/shinra/css/superfish-left.css\" type=\"text/css\"  media=\"screen\" /> 
 			<link rel=\"stylesheet\" href=\"skins/shinra/skins/glossy/style.css\" type=\"text/css\" media=\"screen\" />
 			<link rel=\"stylesheet\" href=\"skins/shinra/js/poshytip-1.0/src/tip-twitter/tip-twitter.css\" type=\"text/css\" />
 			<link rel=\"stylesheet\" href=\"skins/shinra/js/poshytip-1.0/src/tip-yellowsimple/tip-yellowsimple.css\" type=\"text/css\" />
 		";
 
 		$skinArray["shinra"]["javascript"]     = "
-			<!-- /skins/skins.inc.php -->
+			<!-- /skins/skins.inc.php javascript -->
 			<script type=\"text/javascript\" src=\"skins/shinra/js/jquery-1.5.1.min.js\"></script>
 			<script type=\"text/javascript\" src=\"skins/shinra/js/jquery-ui-1.8.13.custom.min.js\"></script>
 			<script type=\"text/javascript\" src=\"skins/shinra/js/custom.js\"></script>
@@ -58,12 +75,13 @@ function getSkinArray() {
 			<script type=\"text/javascript\" src=\"skins/shinra/js/superfish-1.4.8/js/superfish.js\"></script>
 			<script type=\"text/javascript\" src=\"skins/shinra/js/superfish-1.4.8/js/supersubs.js\"></script>
 			<script type=\"text/javascript\" src=\"skins/shinra/js/poshytip-1.0/src/jquery.poshytip.min.js\"></script>
+			<script type=\"text/javascript\" src=\"skins/shinra/js/quicksand.js\"></script>
 		";
 	}
 
 	else {
 		$skinArray["shinra"]["css"]            = "
-			<!-- /skins/skins.inc.php -->
+			<!-- /skins/skins.inc.php css -->
 			<link rel=\"stylesheet\" href=\"skins/shinra/css/" . $stylesheet . "\" type=\"text/css\" media=\"screen\" />
 			<link rel=\"stylesheet\" href=\"skins/shinra/skins/glossy/style.css\" type=\"text/css\" media=\"screen\" />
 			<link rel=\"stylesheet\" href=\"skins/shinra/js/poshytip-1.0/src/tip-twitter/tip-twitter.css\" type=\"text/css\" />
@@ -71,7 +89,7 @@ function getSkinArray() {
 		";
 
 		$skinArray["shinra"]["javascript"]     = "
-			<!-- /skins/skins.inc.php -->
+			<!-- /skins/skins.inc.php javascript -->
 			<script type=\"text/javascript\" src=\"skins/shinra/js/jquery-1.5.1.min.js\"></script>
 			<script type=\"text/javascript\" src=\"skins/shinra/js/jquery-ui-1.8.13.custom.min.js\"></script>
 			<script type=\"text/javascript\" src=\"skins/shinra/js/custom.js\"></script>
@@ -95,14 +113,14 @@ function getSkinArray() {
 //	$skinArray["openlaszlo"]["javascript"]     = "<script type=\"text/javascript\" src=\"". $net2ftp_globals["application_rootdir_url"] . "/skins/openlaszlo/lps/includes/embed-compressed.js\"></script>\n";
 
 // -------------------------------------------------------------------------
-// iPhone
+// Phone
 // -------------------------------------------------------------------------
-	$skinArray["iphone"]["name"]           = "iPhone";
-	$skinArray["iphone"]["iconset"]        = "nuvola";
-	$skinArray["iphone"]["image_url"]      = $net2ftp_globals["application_rootdir_url"] . "/skins/iphone/images";
-	$skinArray["iphone"]["icon_size_mime"] = "0";
-	$skinArray["iphone"]["css"]            = "";
-	$skinArray["iphone"]["javascript"]     = "";
+//	$skinArray["phone"]["name"]           = "Phone";
+//	$skinArray["phone"]["iconset"]        = "nuvola";
+//	$skinArray["phone"]["image_url"]      = $net2ftp_globals["application_rootdir_url"] . "/skins/phone/images";
+//	$skinArray["phone"]["icon_size_mime"] = "0";
+//	$skinArray["phone"]["css"]            = "<link rel=\"stylesheet\" href=\"skins/phone/css/main." . $ltr . ".css\" type=\"text/css\" media=\"screen\" />";
+//	$skinArray["phone"]["javascript"]     = "";
 
 // -------------------------------------------------------------------------
 // Mambo
@@ -567,7 +585,7 @@ function getMime($listline) {
 	}
 	// Internet Explorer does not display transparent PNG images correctly.
 	// A solution is described here: http://support.microsoft.com/default.aspx?scid=kb;en-us;Q294714
-	elseif ($net2ftp_settings["fix_png"] == "yes" && $net2ftp_globals["browser_agent"] == "IE" && $net2ftp_globals["browser_platform"] == "Win" && ($net2ftp_globals["browser_version"] == "5.5" || $net2ftp_globals["browser_version"] == "6.0" || $net2ftp_globals["browser_version"] == "7.0")) { 
+	elseif ($net2ftp_globals["browser_agent"] == "IE" && $net2ftp_globals["browser_platform"] == "Win" && ($net2ftp_globals["browser_version"] == "5.5" || $net2ftp_globals["browser_version"] == "6.0" || $net2ftp_globals["browser_version"] == "7.0")) { 
 		$icon .= ".png";
 		$icon_directory = $skinArray[$net2ftp_globals["skin"]]["image_url"] . "/mime";
 		$mime["mime_icon"] = "<img src=\"$icon_directory/spacer.gif\" alt=\"icon\" style=\"width: " . $skinArray[$net2ftp_globals["skin"]]["icon_size_mime"] . "px; height: " . $skinArray[$net2ftp_globals["skin"]]["icon_size_mime"] . "px; border: 0px; filter: progid:DXImageTransform.Microsoft.AlphaImageLoader(src='$icon_directory/$icon', sizingMethod='scale')\" />\n"; 
@@ -743,11 +761,11 @@ function printActionIcon($action, $onclick) {
 	// Internet Explorer does not display transparent PNG images correctly.
 	// A solution is described here: http://support.microsoft.com/default.aspx?scid=kb;en-us;Q294714
 
-	elseif ($net2ftp_settings["fix_png"] == "yes" && $net2ftp_globals["browser_agent"] == "IE" && $net2ftp_globals["browser_platform"] == "Win" && ($net2ftp_globals["browser_version"] == "5.5" || $net2ftp_globals["browser_version"] == "6.0" || $net2ftp_globals["browser_version"] == "7.0")) { 
-		$icon_total = "$href_start<img src=\"$icon_directory/spacer.gif\" alt=\"$alt\" onmouseover=\"this.style.margin='0px';this.style.width='34px';this.style.height='34px';\" onmouseout=\"this.style.margin='1px';this.style.width='32px';this.style.height='32px';\" style=\"border: 0px; margin: 1px; width: 32px; height: 32px; vertical-align: middle; filter: progid:DXImageTransform.Microsoft.AlphaImageLoader(src='$icon_directory/$icon', sizingMethod='scale');\" />$href_end\n"; 
+	elseif ($net2ftp_globals["browser_agent"] == "IE" && $net2ftp_globals["browser_platform"] == "Win" && ($net2ftp_globals["browser_version"] == "5.5" || $net2ftp_globals["browser_version"] == "6.0" || $net2ftp_globals["browser_version"] == "7.0")) { 
+		$icon_total = "$href_start<img src=\"$icon_directory/spacer.gif\" alt=\"$alt\" class=\"actionIcon\" onmouseover=\"this.className='actionIconOver';\" onmouseout=\"this.className='actionIconOut';\" style=\"filter: progid:DXImageTransform.Microsoft.AlphaImageLoader(src='$icon_directory/$icon', sizingMethod='scale');\" />$href_end\n"; 
 	}
 	else { 
-		$icon_total = "$href_start<img src=\"$icon_directory/$icon\"      alt=\"$alt\" onmouseover=\"this.style.margin='0px';this.style.width='34px';this.style.height='34px';\" onmouseout=\"this.style.margin='1px';this.style.width='32px';this.style.height='32px';\" style=\"border: 0px; margin: 1px; width: 32px; height: 32px; vertical-align: middle;\" />$href_end\n"; 
+		$icon_total = "$href_start<img src=\"$icon_directory/$icon\"      alt=\"$alt\" class=\"actionIcon\" onmouseover=\"this.className='actionIconOver';\" onmouseout=\"this.className='actionIconOut';\" />$href_end\n"; 
 	}
 
 	echo $icon_total;
@@ -876,7 +894,7 @@ function printModeIcon($setting, $on_off, $onclick) {
 
 // DO NOT CLOSE THE IMAGE TAG TO ALLOW ADDITIONAL ACTIONS
 	if ($on_off == "on") {
-		if ($net2ftp_settings["fix_png"] == "yes" && $net2ftp_globals["browser_agent"] == "IE" && $net2ftp_globals["browser_platform"] == "Win" && ($net2ftp_globals["browser_version"] == "5.5" || $net2ftp_globals["browser_version"] == "6.0" || $net2ftp_globals["browser_version"] == "7.0")) { 
+		if ($net2ftp_globals["browser_agent"] == "IE" && $net2ftp_globals["browser_platform"] == "Win" && ($net2ftp_globals["browser_version"] == "5.5" || $net2ftp_globals["browser_version"] == "6.0" || $net2ftp_globals["browser_version"] == "7.0")) { 
 			$icon_total = "<img src=\"$icon_directory/spacer.gif\"   alt=\"$alt\" style=\"border: 2px solid #000000; padding-top: 1px; padding-left: 2px; width: 32px; height: 32px; vertical-align: middle; filter: progid:DXImageTransform.Microsoft.AlphaImageLoader(src='$icon_directory/$icon', sizingMethod='scale');\" />\n"; 
 		}
 		else {
@@ -884,7 +902,7 @@ function printModeIcon($setting, $on_off, $onclick) {
 		}
 	}
 	else {
-		if ($net2ftp_settings["fix_png"] == "yes" && $net2ftp_globals["browser_agent"] == "IE" && $net2ftp_globals["browser_platform"] == "Win" && ($net2ftp_globals["browser_version"] == "5.5" || $net2ftp_globals["browser_version"] == "6.0" || $net2ftp_globals["browser_version"] == "7.0")) {
+		if ($net2ftp_globals["browser_agent"] == "IE" && $net2ftp_globals["browser_platform"] == "Win" && ($net2ftp_globals["browser_version"] == "5.5" || $net2ftp_globals["browser_version"] == "6.0" || $net2ftp_globals["browser_version"] == "7.0")) {
 			$icon_total = "<a href=\"javascript:$onClick\"><img src=\"$icon_directory/spacer.gif\"   alt=\"$alt\" onmouseover=\"this.style.margin='0px';this.style.width='34px';this.style.height='34px';\" onmouseout=\"this.style.margin='1px';this.style.width='32px';this.style.height='32px';\" style=\"border: 0px; margin: 1px; width: 32px; height: 32px; vertical-align: middle; filter: progid:DXImageTransform.Microsoft.AlphaImageLoader(src='$icon_directory/$icon', sizingMethod='scale');\" /></a>\n"; 
 		}
 		else { 
@@ -995,7 +1013,7 @@ function printTitleIcon() {
 	
 	// Internet Explorer does not display transparent PNG images correctly.
 	// A solution is described here: http://support.microsoft.com/default.aspx?scid=kb;en-us;Q294714
-	if ($net2ftp_settings["fix_png"] == "yes" && $net2ftp_globals["browser_agent"] == "IE" && $net2ftp_globals["browser_platform"] == "Win" && ($net2ftp_globals["browser_version"] == "5.5" || $net2ftp_globals["browser_version"] == "6.0" || $net2ftp_globals["browser_version"] == "7.0")) { 
+	if ($net2ftp_globals["browser_agent"] == "IE" && $net2ftp_globals["browser_platform"] == "Win" && ($net2ftp_globals["browser_version"] == "5.5" || $net2ftp_globals["browser_version"] == "6.0" || $net2ftp_globals["browser_version"] == "7.0")) { 
 		$icon_total = "<img src=\"$icon_directory/spacer.gif\" alt=\"icon\" style=\"width: 48px; height: 48px; vertical-align: middle; filter: progid:DXImageTransform.Microsoft.AlphaImageLoader(src='$icon_directory/$icon', sizingMethod='scale')\" />\n"; 
 	}
 	else { 
@@ -1045,7 +1063,7 @@ function printPngImage($src, $alt, $style) {
 
 	// Internet Explorer does not display transparent PNG images correctly.
 	// A solution is described here: http://support.microsoft.com/default.aspx?scid=kb;en-us;Q294714
-	if ($net2ftp_settings["fix_png"] == "yes" && $net2ftp_globals["browser_agent"] == "IE" && $net2ftp_globals["browser_platform"] == "Win" && ($net2ftp_globals["browser_version"] == "5.5" || $net2ftp_globals["browser_version"] == "6.0" || $net2ftp_globals["browser_version"] == "7.0")) { 
+	if ($net2ftp_globals["browser_agent"] == "IE" && $net2ftp_globals["browser_platform"] == "Win" && ($net2ftp_globals["browser_version"] == "5.5" || $net2ftp_globals["browser_version"] == "6.0" || $net2ftp_globals["browser_version"] == "7.0")) { 
 		$image = "<img src=\"$src_spacer\" alt=\"$alt\" style=\"$style; filter: progid:DXImageTransform.Microsoft.AlphaImageLoader(src='$src', sizingMethod='scale')\" />\n"; 
 	}
 	else { 
